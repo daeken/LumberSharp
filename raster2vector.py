@@ -1,16 +1,19 @@
 import itertools, math
 from PIL import Image
-from svgwrite import Drawing, rgb
+from svgwrite import Drawing, rgb, solidcolor
+
+def dist(a, b):
+	return math.sqrt((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2)
 
 width = height = 1000
 
 print 'Loading'
 edges = [-1] * (width * height)
 for line in file('Converter/log'):
-	x, y, depth, dist = line[:-1].split(' ')
+	x, y, depth, rdist = line[:-1].split(' ')
 	x, y = int(x), int(y)
 	depth = float(depth)
-	#dist = int(dist)
+	#rdist = int(rdist)
 
 	edges[y * width + x] = depth
 
@@ -99,7 +102,7 @@ def trace(patch):
 		if count(x, y) == 0:
 			continue
 		if prev is not None:
-			lines.append(((x, y), prev))
+			lines.append((prev, (x, y)))
 		erase(x, y)
 		for dx, dy in nopt:
 			erase(x + dx, y + dy)
@@ -113,9 +116,9 @@ def trace(patch):
 		for nx, ny, _ in opts:
 			queue.append(((nx, ny), (x, y)))
 
+	"""
 	origLineCount = len(lines)
 	print 'Simplifying', origLineCount, 'lines'
-
 	changed = True
 	while changed:
 		print 'Iteration (%i lines)' % len(lines)
@@ -146,16 +149,119 @@ def trace(patch):
 			for elem in remove:
 				lines.remove(elem)
 			lines += nlines
-	print 'Simplified to', len(lines), 'from', origLineCount
+	print 'Simplified to', len(lines), 'from', origLineCount"""
 	return lines
 
 patchSegments = map(trace, patches)
 
+def sign(x):
+	if x >= 0:
+		return 1
+	return -1
+
+def optimizePath(path):
+	if len(path) < 3:
+		return path
+	last = path[0]
+	npath = []
+	for i in xrange(1, len(path)):
+		b, c = path[i - 1], path[i]
+		if b == last:
+			continue
+		db = b[0] - last[0], b[1] - last[1]
+		dc = c[0] - b[0], c[1] - b[1]
+		if db[0] == 0 and dc[0] == 0 and sign(db[1]) == sign(dc[1]):
+			last = c
+		elif db[0] != 0 and dc[0] != 0 and db[1] / float(db[0]) == dc[1] / float(dc[0]):
+			last = c
+		else:
+			npath.append(last)
+			last = b
+
+	npath.append(last)
+
+	return npath
+
+def pathify(lines):
+	paths = []
+	for a, b in lines:
+		found = False
+		for path in paths:
+			aIn, bIn = a in path, b in path
+			if aIn and bIn:
+				continue
+			end = path[-1]
+			if end == a or end == b:
+				path.append(a if end == b else b)
+				found = True
+				break
+			start = path[0]
+			if start == a or start == b:
+				path.insert(0, a if start == b else b)
+				found = True
+				break
+		if not found:
+			paths.append([a, b])
+	return paths#map(optimizePath, paths)
+
+patchPaths = map(pathify, patchSegments)
+
+allPaths = reduce(lambda a, x: a + x, patchPaths)
+
+def minimizeTravel(paths):
+	last = paths[0][-1]
+	npaths = [paths[0]]
+	remaining = paths[1:]
+
+	while len(remaining):
+		closest = (100000000, None, False) # distance, path, needReverse
+		for elem in remaining:
+			sd = dist(last, elem[0])
+			ed = dist(last, elem[-1])
+			if sd <= ed and sd < closest[0]:
+				closest = (sd, elem, False)
+				if sd == 0:
+					break
+			elif ed < sd and ed < closest[0]:
+				closest = (ed, elem, True)
+				if ed == 0:
+					break
+		assert closest[1] is not None
+		cpath = closest[1]
+		remaining.remove(cpath)
+		if closest[2]:
+			cpath = cpath[::-1]
+		last = cpath[-1]
+		npaths.append(cpath)
+
+	return npaths
+
+def calcTravel(paths):
+	last = paths[0][-1]
+	tdist = 0
+	
+	for path in paths[1:]:
+		tdist += dist(last, path[0])
+		last = path[-1]
+
+	return tdist
+
+print 'Current travel:', calcTravel(allPaths)
+print 'Minimizing travel'
+allPaths = minimizeTravel(allPaths)
+print 'New travel:', calcTravel(allPaths)
+
 dwg = Drawing('test.svg', profile='tiny')
 print 'Building SVG'
-for segments in patchSegments:
-	print 'Patch of', len(segments), 'lines'
-	for a, b in segments:
-		dwg.add(dwg.line(a, b, stroke='black'))
+for path in allPaths:
+	#print '\tPath of', len(path), 'elements'
+	spath = dwg.path(stroke='black')
+	spath.stroke(color='black', width=1)
+	spath.fill(color='red', opacity=0)
+	spath.push('M %.1f %.1f' % (path[0][0] / 2.0, path[0][1] / 2.0))
+	for elem in path[1:]:
+		spath.push('L %.1f %.1f' % (elem[0] / 2.0, elem[1] / 2.0))
+	dwg.add(spath)
+	#dwg.add(dwg.line(a, b, stroke='black'))
 print 'Saving'
 dwg.save()
