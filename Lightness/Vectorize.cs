@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Numerics;
 using Lightness.Renderer;
 using PrettyPrinter;
 
@@ -9,6 +10,8 @@ namespace Lightness {
 	public class Vectorize {
 		readonly Pixel[] Pixels;
 		readonly int Width, Height;
+		
+		readonly List<List<(int, int)>> FinalPaths;
 		
 		public Vectorize(Pixel[] pixels, int width, int height) {
 			Pixels = pixels;
@@ -18,8 +21,9 @@ namespace Lightness {
 			FindDepthDelta();
 			RemoveNonEdges();
 			FloodFill();
+			RemoveNoise();
 			var paths = Trace();
-			FinalPaths = ReorderPaths(paths);
+			FinalPaths = SimplifyPaths(JoinPaths(ReorderPaths(paths)));
 		}
 
 		static readonly (int, int)[] Neighbors = {
@@ -86,6 +90,8 @@ namespace Lightness {
 						Flood(x, y);
 		}
 
+		void RemoveNoise() => Patches.RemoveAll(x => x.Count <= 10);
+
 		List<((int, int), (int, int))> TracePatch(List<(int, int)> patch) {
 			var pixels = new bool[Width * Height];
 			foreach(var (x, y) in patch)
@@ -133,8 +139,7 @@ namespace Lightness {
 			foreach(var (a, b) in lines) {
 				var found = false;
 				foreach(var path in paths) {
-					if(path.Contains(a) && path.Contains(b)) continue;
-					var end = path.Last();
+					var end = path[path.Count - 1];
 					if(end == a || end == b) {
 						path.Add(end == b ? a : b);
 						found = true;
@@ -195,7 +200,70 @@ namespace Lightness {
 			return paths;
 		}
 
-		List<List<(int, int)>> FinalPaths;
+		List<List<(int, int)>> JoinPaths(List<List<(int, int)>> paths) {
+			"Combining paths".Print();
+			var last = paths[0].Last();
+			var npaths = new List<List<(int, int)>> { paths[0] };
+			foreach(var path in paths) {
+				var dist = Dist(path[0], last);
+				if(dist < 4)
+					npaths.Last().AddRange(path.Skip(1));
+				else
+					npaths.Add(path);
+				last = path.Last();
+			}
+			return npaths;
+		}
+
+		List<(int, int)> SimplifyPath(List<(int, int)> path) {
+			if(path.Count < 3) return path;
+
+			//$"Path elements {path.Count}".Print();
+
+			var tris = new List<Triangle2D>();
+			for(var i = 0; i < path.Count - 2; ++i) {
+				var (a, b, c) = (path[i], path[i + 1], path[i + 2]);
+				tris.Add(new Triangle2D(
+					new Vector2(a.Item1, a.Item2),
+					new Vector2(b.Item1, b.Item2),
+					new Vector2(c.Item1, c.Item2)
+				));
+			}
+
+			while(tris.Count > 1) {
+				var min = 0;
+				var minArea = tris[0].Area;
+				for(var i = 1; i < tris.Count; ++i)
+					if(tris[i].Area < min) {
+						min = i;
+						minArea = tris[i].Area;
+					}
+				if(minArea > 30) break;
+				if(min > 0) {
+					tris[min - 1].C = tris[min].C;
+					tris[min - 1].UpdateArea();
+				}
+				if(min < tris.Count - 1) {
+					tris[min + 1].A = tris[min].A;
+					tris[min + 1].UpdateArea();
+				}
+				tris.RemoveAt(min);
+			}
+
+			var npoints = new List<Vector2> { tris[0].A };
+			foreach(var tri in tris)
+				npoints.Add(tri.B);
+			npoints.Add(tris.Last().C);
+			
+			//$"New path count {npoints.Count}".Print();
+
+			return npoints.Select(x => ((int) MathF.Round(x.X), (int) MathF.Round(x.Y))).ToList();
+		}
+
+		List<List<(int, int)>> SimplifyPaths(List<List<(int, int)>> paths) {
+			"Simplifying paths".Print();
+			return paths.Select(SimplifyPath).ToList();
+		}
 
 		public void Output(string fn) {
 			"Writing SVG".Print();

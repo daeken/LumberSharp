@@ -10,10 +10,7 @@ namespace Lightness.Renderer {
 			using(var fp = File.OpenRead(fn)) {
 				var data = new byte[fp.Length];
 				fp.Read(data, 0, data.Length);
-				if(data[0] == 0)
-					return LoadBinary(data);
-				else
-					return LoadText(Encoding.ASCII.GetString(data));
+				return data[0] == 0 ? LoadBinary(data) : LoadText(Encoding.ASCII.GetString(data));
 			}
 		}
 
