@@ -72,31 +72,31 @@ namespace Renderer {
 				mm.Select(1, 1, 1)
 			};
 			
-			Nodes = triLists.Select((x, i) => new Octree(new Mesh(x.ToList(), mesh.Material), maxTrisPerLeaf, new AABB(boundingMins[i], ms), depth + 1)).ToArray();
+			Nodes = triLists.Select((x, i) => new Octree(new Mesh(x.ToList()), maxTrisPerLeaf, new AABB(boundingMins[i], ms), depth + 1)).ToArray();
 		}
 
-		public (Triangle, Material, Vector3, float)? FindIntersectionSlow(Ray ray) {
+		public (Triangle, Vector3, float)? FindIntersectionSlow(Ray ray) {
 			if(Empty || !BoundingBox.IntersectedBy(ray)) return null;
 			if(Leaf != null) {
-				(Triangle, Material, Vector3, float)? closest = null;
+				(Triangle, Vector3, float)? closest = null;
 				var distance = float.PositiveInfinity;
 				foreach(var triangle in Leaf.Triangles) {
 					var hit = triangle.Intersect(ray);
 					if(hit != -1 && hit < distance) {
 						distance = hit;
-						closest = (triangle, Leaf.Material, ray.Origin + ray.Direction * hit, hit);
+						closest = (triangle, ray.Origin + ray.Direction * hit, hit);
 					}
 				}
 				return closest;
 			}
 
-			(Triangle, Material, Vector3, float)? closestBox = null;
+			(Triangle, Vector3, float)? closestBox = null;
 			var boxDist = float.PositiveInfinity;
 			foreach(var node in Nodes) {
 				if(node.Empty) continue;
 				var ret = node.FindIntersectionSlow(ray);
 				if(ret != null) {
-					var dist = (ret.Value.Item3 - ray.Origin).LengthSquared();
+					var dist = (ret.Value.Item2 - ray.Origin).LengthSquared();
 					if(dist < boxDist) {
 						closestBox = ret;
 						boxDist = dist;
@@ -106,23 +106,23 @@ namespace Renderer {
 			return closestBox;
 		}
 
-		public (Triangle, Material, Vector3, float)? FindIntersectionCustom(Ray ray) {
+		public (Triangle, Vector3, float)? FindIntersectionCustom(Ray ray) {
 			return !BoundingBox.Contains(ray.Origin)
 				? FindIntersectionSlow(ray)
 				: SubIntersectionCustom(ray);
 		}
 
-		(Triangle, Material, Vector3, float)? SubIntersectionCustom(Ray ray) {
+		(Triangle, Vector3, float)? SubIntersectionCustom(Ray ray) {
 			if(Empty) return null;
 			if(Leaf != null) {
-				(Triangle, Material, Vector3, float)? closest = null;
+				(Triangle, Vector3, float)? closest = null;
 				var distance = float.PositiveInfinity;
 				foreach(var triangle in Leaf.Triangles) {
 					var hit = triangle.Intersect(ray);
 
 					if(hit != -1 && hit < distance) {
 						distance = hit;
-						closest = (triangle, Leaf.Material, ray.Origin + ray.Direction * hit, hit);
+						closest = (triangle, ray.Origin + ray.Direction * hit, hit);
 					}
 				}
 				return closest;

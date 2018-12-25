@@ -7,12 +7,10 @@ using PrettyPrinter;
 namespace Renderer {
 	public class Mesh {
 		public readonly IReadOnlyList<Triangle> Triangles;
-		public readonly Material Material;
 		public readonly AABB BoundingBox;
 
-		public Mesh(IReadOnlyList<Triangle> triangles, Material material) {
+		public Mesh(IReadOnlyList<Triangle> triangles) {
 			Triangles = triangles;
-			Material = material;
 			var bounds = Triangles.Select(x => new[] { x.A, x.B, x.C }).SelectMany(x => x).Bounds();
 			BoundingBox = new AABB(bounds.Low, bounds.High - bounds.Low);
 		}

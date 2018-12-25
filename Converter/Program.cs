@@ -15,17 +15,15 @@ namespace Converter {
 		};
 		
 		static void Main(string[] args) {
-			var cimg = Png.Decode("color", File.OpenRead("../Renderer/test.png"));
-			var nimg = Png.Decode("normal", File.OpenRead("../Renderer/testn.png"));
-			var dimg = Png.Decode("depth", File.OpenRead("../Renderer/testd.png"));
-			var (width, height) = cimg.Size;
+			var nimg = Png.Decode("normal", File.OpenRead("../Lightness/test4kn.png"));
+			var dimg = Png.Decode("depth", File.OpenRead("../Lightness/test4kd.png"));
+			var (width, height) = nimg.Size;
 
 			var pixels = new Pixel[width * height];
 			for(var i = 0; i < pixels.Length; ++i) {
-				var color = new Vector4(cimg.Data[i * 4] / 255f, cimg.Data[i * 4 + 1] / 255f, cimg.Data[i * 4 + 2] / 255f, cimg.Data[i * 4 + 3] / 255f);
 				var normal = new Vector3(nimg.Data[i * 3] / 255f, nimg.Data[i * 3 + 1] / 255f, nimg.Data[i * 3 + 2] / 255f);
 				var depth = BitConverter.ToSingle(dimg.Data, i * 4);
-				pixels[i] = new Pixel { Color = color, Normal = Vector3.Normalize(normal * new Vector3(2f) - new Vector3(1f)), Depth = depth };
+				pixels[i] = new Pixel { Normal = Vector3.Normalize(normal * new Vector3(2f) - new Vector3(1f)), Depth = depth };
 			}
 
 			Pixel sample(int x, int y) => x < 0 || x >= width || y < 0 || y >= height ? new Pixel() : pixels[y * width + x];

@@ -5,7 +5,7 @@ from svgwrite import Drawing, rgb, solidcolor
 def dist(a, b):
 	return math.sqrt((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2)
 
-width = height = 1000
+width = height = 4000
 
 print 'Loading'
 edges = [-1] * (width * height)
@@ -258,9 +258,9 @@ for path in allPaths:
 	spath = dwg.path(stroke='black')
 	spath.stroke(color='black', width=1)
 	spath.fill(color='red', opacity=0)
-	spath.push('M %.1f %.1f' % (path[0][0] / 2.0, path[0][1] / 2.0))
+	spath.push('M %.1f %.1f' % (path[0][0] / 4.0, path[0][1] / 4.0))
 	for elem in path[1:]:
-		spath.push('L %.1f %.1f' % (elem[0] / 2.0, elem[1] / 2.0))
+		spath.push('L %.1f %.1f' % (elem[0] / 4.0, elem[1] / 4.0))
 	dwg.add(spath)
 	#dwg.add(dwg.line(a, b, stroke='black'))
 print 'Saving'

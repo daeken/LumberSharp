@@ -48,36 +48,12 @@ namespace Renderer {
 			var hit = FindHit(ray);
 			if(hit == null) return null;
 
-			var (tri, mat, dist) = hit.Value;
+			var (tri, dist) = hit.Value;
 			var pos = ray.Origin + ray.Direction * dist;
 			var uv = CalcUV(tri, ray);
 			var normal = ((1f - uv.X - uv.Y) * tri.NA + uv.X * tri.NB + uv.Y * tri.NC).Normalized();
 
-			var surfaceColor = GetColor(mat, pos, normal);
-
-			if(mat.Reflectivity > 0) {
-				var rdir = (ray.Direction - 2f * Vector3.Dot(ray.Direction, normal) * normal).Normalized();
-				var reflection = CalcPoint(new Ray { Origin = pos + normal * 0.01f, Direction = rdir }, depth + 1);
-				if(reflection != null)
-					surfaceColor += reflection.Value.Color * mat.Reflectivity;
-			}
-			
-			return new Pixel { Color = surfaceColor, Depth = dist, Normal = normal, Position = pos };
-		}
-
-		Vector3 GetColor(Material mat, Vector3 pos, Vector3 normal) {
-			var color = Scene.AmbientColor * mat.Albedo;
-			foreach(var light in Scene.Lights)
-				color += min(max(CalcLightContribution(pos, normal, light), Vector3.Zero), Vector3.One) * mat.Albedo;
-			return color;
-		}
-		
-		Vector3 CalcLightContribution(Vector3 pos, Vector3 normal, Light light) {
-			switch(light) {
-				case DirectionalLight dl:
-					return dl.Color * Vector3.Dot(normal, -dl.Direction);
-				default: throw new NotImplementedException();
-			}
+			return new Pixel { Depth = dist, Normal = normal, Position = pos };
 		}
 
 		Vector2 CalcUV(Triangle tri, Ray ray) {
@@ -93,19 +69,17 @@ namespace Renderer {
 			return new Vector2(u, v);
 		}
 
-		(Triangle, Material, float)? FindHit(Ray ray) {
+		(Triangle, float)? FindHit(Ray ray) {
 			Triangle? closest = null;
-			Material closestMat = null;
 			var dist = float.PositiveInfinity;
 			foreach(var octree in Scene.Octrees) {
 				var mi = octree.FindIntersectionCustom(ray);
-				if(mi == null || mi.Value.Item4 > dist) continue;
+				if(mi == null || mi.Value.Item3 > dist) continue;
 				closest = mi.Value.Item1;
-				closestMat = mi.Value.Item2;
-				dist = mi.Value.Item4;
+				dist = mi.Value.Item3;
 			}
 			if(closest == null) return null;
-			return (closest.Value, closestMat, dist);
+			return (closest.Value, dist);
 		}
 	}
 }

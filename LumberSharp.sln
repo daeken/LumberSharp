@@ -8,6 +8,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Zlib.Portable", "Zlib.Porta
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Converter", "Converter\Converter.csproj", "{15FA81F3-6D27-4571-8ECF-A84C7EDF3CFC}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Lightness", "Lightness\Lightness.csproj", "{1BC3D314-6103-41E4-BE2F-710041B57A98}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -30,5 +32,9 @@ Global
 		{15FA81F3-6D27-4571-8ECF-A84C7EDF3CFC}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{15FA81F3-6D27-4571-8ECF-A84C7EDF3CFC}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{15FA81F3-6D27-4571-8ECF-A84C7EDF3CFC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1BC3D314-6103-41E4-BE2F-710041B57A98}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1BC3D314-6103-41E4-BE2F-710041B57A98}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1BC3D314-6103-41E4-BE2F-710041B57A98}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1BC3D314-6103-41E4-BE2F-710041B57A98}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
