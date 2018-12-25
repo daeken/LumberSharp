@@ -13,8 +13,10 @@ namespace Lightness {
 			var scene = new Scene();
 			//var egg2Mesh = StlLoader.Load("egg-2.stl");
 			//scene.Add(new Model(egg2Mesh).Rotate(Vector3.UnitZ, MathF.PI / 5).Translate(new Vector3(0, 30, -25)));
-			var radioTowerMesh = StlLoader.Load("radiotower.stl");
-			scene.Add(new Model(radioTowerMesh).Rotate(Vector3.UnitZ, MathF.PI / 4).Translate(new Vector3(0, 250, -100)));
+			//var radioTowerMesh = StlLoader.Load("radiotower.stl");
+			//scene.Add(new Model(radioTowerMesh).Rotate(Vector3.UnitZ, MathF.PI / 4).Translate(new Vector3(0, 250, -100)));
+			var statueMesh = StlLoader.Load("statue.stl");
+			scene.Add(new Model(statueMesh).Translate(new Vector3(-225, -225, -60)));
 			
 			var camera = new PerspectiveCamera {
 				Up = Vector3.UnitZ, 
@@ -23,8 +25,8 @@ namespace Lightness {
 				FOV = 45
 			};
 
-			const int width = 8000;
-			const int height = 8000;
+			const int width = 4000;
+			const int height = 4000;
 			
 			"Rendering".Print();
 			var renderer = new Renderer.Renderer(scene, camera, (width, height));
@@ -37,7 +39,8 @@ namespace Lightness {
 					}).SelectMany(x => x).ToArray()
 				);
 				using(var fp = File.OpenWrite("test4kn.png"))
-					Png.Encode(nimage, fp);*/
+					Png.Encode(nimage, fp);
+				return;*/
 				
 				"Vectorizing".Print();
 				var vectorize = new Vectorize(pixels, width, height);

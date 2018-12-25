@@ -23,7 +23,16 @@ namespace Lightness {
 			FloodFill();
 			RemoveNoise();
 			var paths = Trace();
-			FinalPaths = SimplifyPaths(JoinPaths(ReorderPaths(paths)));
+			paths = ReorderPaths(paths);
+			while(true) {
+				var pcount = paths.Count;
+				paths = JoinPaths(paths);
+				$"{pcount} -> {paths.Count} Paths".Print();
+				if(paths.Count >= pcount)
+					break;
+				paths = ReorderPaths(paths);
+			}
+			FinalPaths = SimplifyPaths(paths);
 		}
 
 		static readonly (int, int)[] Neighbors = {
@@ -204,7 +213,7 @@ namespace Lightness {
 			"Combining paths".Print();
 			var last = paths[0].Last();
 			var npaths = new List<List<(int, int)>> { paths[0] };
-			foreach(var path in paths) {
+			foreach(var path in paths.Skip(1)) {
 				var dist = Dist(path[0], last);
 				if(dist < 4)
 					npaths.Last().AddRange(path.Skip(1));
@@ -238,7 +247,7 @@ namespace Lightness {
 						min = i;
 						minArea = tris[i].Area;
 					}
-				if(minArea > 30) break;
+				if(minArea > 50) break;
 				if(min > 0) {
 					tris[min - 1].C = tris[min].C;
 					tris[min - 1].UpdateArea();
