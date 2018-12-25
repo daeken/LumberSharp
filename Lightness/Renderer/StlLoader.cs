@@ -1,10 +1,40 @@
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Numerics;
+using System.Text;
 
 namespace Lightness.Renderer {
 	public static class StlLoader {
-		public static IReadOnlyList<Triangle> Load(string data) {
+		public static IReadOnlyList<Triangle> Load(string fn) {
+			using(var fp = File.OpenRead(fn)) {
+				var data = new byte[fp.Length];
+				fp.Read(data, 0, data.Length);
+				if(data[0] == 0)
+					return LoadBinary(data);
+				else
+					return LoadText(Encoding.ASCII.GetString(data));
+			}
+		}
+
+		static IReadOnlyList<Triangle> LoadBinary(byte[] data) {
+			using(var br = new BinaryReader(new MemoryStream(data))) {
+				br.ReadBytes(80);
+				var numTris = br.ReadUInt32();
+				var tris = new List<Triangle>();
+				for(var i = 0; i < numTris; ++i) {
+					var normal = ReadVec3(br);
+					var a = ReadVec3(br);
+					var b = ReadVec3(br);
+					var c = ReadVec3(br);
+					var attr = br.ReadUInt16();
+					tris.Add(new Triangle(a, b, c, normal));
+				}
+				return tris;
+			}
+		}
+
+		static IReadOnlyList<Triangle> LoadText(string data) {
 			var triangles = new List<Triangle>();
 			var verts = new Vector3[3];
 			var off = 0;
@@ -25,9 +55,11 @@ namespace Lightness.Renderer {
 						break;
 				}
 			}
-
 			return triangles;
 		}
+		
+		static Vector3 ReadVec3(BinaryReader br) =>
+			new Vector3(br.ReadSingle(), br.ReadSingle(), br.ReadSingle());
 
 		static Vector3 Parse(IEnumerable<string> elems, int offset) {
 			var p = elems.Skip(offset).Take(3).Select(x => float.Parse(x, System.Globalization.NumberStyles.Any))

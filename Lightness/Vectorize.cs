@@ -41,7 +41,7 @@ namespace Lightness {
 
 					var neighborDeltas = sampleNeighbors(x, y).Select(n => n == null ? pixel.Depth : MathF.Abs(pixel.Depth - n.Depth));
 					pixel.DepthDelta = neighborDeltas.Max();
-					pixel.Edge = pixel.DepthDelta > 0.9f;
+					pixel.Edge = pixel.DepthDelta > 0.00001f;
 				}
 		}
 
@@ -199,15 +199,15 @@ namespace Lightness {
 
 		public void Output(string fn) {
 			"Writing SVG".Print();
-			using(var fp = File.OpenWrite(fn))
+			using(var fp = File.Open(fn, FileMode.Create, FileAccess.Write))
 				using(var sw = new StreamWriter(fp)) {
 					sw.WriteLine("<?xml version=\"1.0\" encoding=\"utf-8\" ?>");
 					sw.WriteLine("<svg baseProfile=\"tiny\" height=\"100%\" version=\"1.2\" width=\"100%\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:ev=\"http://www.w3.org/2001/xml-events\" xmlns:xlink=\"http://www.w3.org/1999/xlink\"><defs />");
 					foreach(var path in FinalPaths) {
 						var (fx, fy) = path[0];
-						sw.Write($"<path d=\"M {fx} {fy}");
+						sw.Write($"<path d=\"M {fx / 8f} {fy / 8f}");
 						foreach(var (nx, ny) in path.Skip(1))
-							sw.Write($" L {nx} {ny}");
+							sw.Write($" L {nx / 8f} {ny / 8f}");
 						sw.WriteLine("\" fill=\"red\" fill-opacity=\"0\" stroke=\"black\" stroke-width=\"1\" />");
 					}
 					sw.WriteLine("</svg>");
