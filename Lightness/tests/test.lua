@@ -1,6 +1,8 @@
-scene.width = 4000;
-scene.height = 4000;
+scene.width = 8000;
+scene.height = 8000;
 scene.preview = false;
+page.width = 297;
+page.height = 420;
 
 scene.camera = PerspectiveCamera.create();
 scene.camera.position = vec3(0, -100, 0);
@@ -12,11 +14,11 @@ scene.camera.lookAt = vec3(0, 0, 0);
 --egg2 = StlLoader.load("egg-2.stl");
 --scene.add(egg2.rotate(vec3(0, 0, 1), PI / 5).translate(vec3(0, 30, -25)));
 
---radioTower = StlLoader.load("radiotower.stl");
---scene.add(radioTower.rotate(vec3(0, 0, 1), PI / 4).translate(vec3(0, 250, -100)));
+radioTower = StlLoader.load("radiotower.stl");
+scene.add(radioTower.rotate(vec3(0, 0, 1), PI / 4).translate(vec3(0, 250, -100)));
 
 --statue = StlLoader.load("statue.stl");
 --scene.add(statue.translate(vec3(-225, -225, -60)));
 
-csphere = StlLoader.load("csphere4.stl");
-scene.add(csphere.rotate(vec3(1, 0, 0), -PI / 3).rotate(vec3(0, 0, 1), -PI / 6).translate(vec3(0, -50, 0)));
+--csphere = StlLoader.load("csphere4.stl");
+--scene.add(csphere.rotate(vec3(1, 0, 0), -PI / 3).rotate(vec3(0, 0, 1), -PI / 6).translate(vec3(0, -50, 0)));

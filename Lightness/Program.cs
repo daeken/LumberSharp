@@ -21,12 +21,14 @@ namespace Lightness {
 			
 			"Loading".Debug();
 			var scene = new Scene();
+			var page = new Page();
 			
 			UserData.RegisterAssembly(typeof(Program).Assembly);
 			UserData.RegisterType<Vector3>();
 			var script = new Script();
 			script.Globals["vec3"] = (Func<float, float, float, Vector3>) ((a, b, c) => new Vector3(a, b, c));
 			script.Globals["scene"] = scene;
+			script.Globals["page"] = page;
 			script.Globals["StlLoader"] = typeof(StlLoader);
 			script.Globals["PerspectiveCamera"] = typeof(PerspectiveCamera);
 			script.Globals["PI"] = MathF.PI;
@@ -53,7 +55,7 @@ namespace Lightness {
 				} else {
 					"Vectorizing".Debug();
 					var vectorize = new Vectorize(pixels, scene.Width, scene.Height);
-					vectorize.Output(args[1]);
+					vectorize.Output(args[1], page);
 				}
 			};
 			renderer.Render();

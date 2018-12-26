@@ -277,17 +277,45 @@ namespace Lightness {
 			return paths.Select(SimplifyPath).ToList();
 		}
 
-		public void Output(string fn) {
+		public void Output(string fn, Page page) {
+			"Resizing paths".Debug();
+			int lowX = 100000, lowY = 100000;
+			int highX = 0, highY = 0;
+			foreach(var path in FinalPaths)
+				foreach(var (px, py) in path) {
+					if(px < lowX) lowX = px;
+					if(py < lowY) lowY = py;
+					if(px > highX) highX = px;
+					if(py > highY) highY = py;
+				}
+			var off = new Vector2(lowX, lowY);
+
+			var usable = new Vector2(
+				page.Width - page.LeftMargin - page.RightMargin, 
+				page.Height - page.TopMargin - page.BottomMargin
+			);
+			var ur = usable.X / usable.Y;
+			
+			var cur = new Vector2(highX - lowX, highY - lowY);
+			var cr = cur.X / cur.Y;
+			var nsize = ur > cr ? new Vector2(cur.X * usable.Y / cur.Y, usable.Y) : new Vector2(usable.X, cur.Y * usable.X / cur.X);
+			var scale = nsize / cur;
+			
+			var margin = new Vector2(page.LeftMargin + (usable.X - nsize.X) / 2, page.TopMargin + (usable.Y - nsize.Y) / 2);
+
+			const float fudge = 3.54329f;
+			var spaths = FinalPaths.Select(path => path.Select(pe => ((new Vector2(pe.Item1, pe.Item2) - off) * scale + margin) * fudge).ToList());
+			
 			"Writing SVG".Debug();
 			using(var fp = File.Open(fn, FileMode.Create, FileAccess.Write))
 				using(var sw = new StreamWriter(fp)) {
 					sw.WriteLine("<?xml version=\"1.0\" encoding=\"utf-8\" ?>");
-					sw.WriteLine("<svg baseProfile=\"tiny\" height=\"100%\" version=\"1.2\" width=\"100%\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:ev=\"http://www.w3.org/2001/xml-events\" xmlns:xlink=\"http://www.w3.org/1999/xlink\"><defs />");
-					foreach(var path in FinalPaths) {
-						var (fx, fy) = path[0];
-						sw.Write($"<path d=\"M {fx / 8f} {fy / 8f}");
-						foreach(var (nx, ny) in path.Skip(1))
-							sw.Write($" L {nx / 8f} {ny / 8f}");
+					sw.WriteLine($"<svg baseProfile=\"tiny\" version=\"1.2\" width=\"{page.Width}mm\" height=\"{page.Height}mm\" viewbox=\"0 0 {page.Width} {page.Height}\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:ev=\"http://www.w3.org/2001/xml-events\" xmlns:xlink=\"http://www.w3.org/1999/xlink\"><defs />");
+					foreach(var path in spaths) {
+						var f = path[0];
+						sw.Write($"<path d=\"M {f.X} {f.Y}");
+						foreach(var n in path.Skip(1))
+							sw.Write($" L {n.X} {n.Y}");
 						sw.WriteLine("\" fill=\"red\" fill-opacity=\"0\" stroke=\"black\" stroke-width=\"1\" />");
 					}
 					sw.WriteLine("</svg>");

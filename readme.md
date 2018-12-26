@@ -27,6 +27,7 @@ Lua Files
 
 LumberSharp uses Lua to define scenes and rendering parameters.  The format is largely straightforward:
 
+- Set page parameters (defaults to A4 in portrait mode with 10mm margins on all sides)
 - Define a camera
 - Load some number of meshes
 - Add them to the scene
