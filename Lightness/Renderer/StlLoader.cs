@@ -9,7 +9,7 @@ namespace Lightness.Renderer {
 	[MoonSharpUserData]
 	public static class StlLoader {
 		public static Model Load(string fn) {
-			using(var fp = File.OpenRead(fn)) {
+			using(var fp = File.OpenRead(Path.Combine(Lightness.Program.BaseDirectory, fn))) {
 				var data = new byte[fp.Length];
 				fp.Read(data, 0, data.Length);
 				return new Model(Encoding.ASCII.GetString(data, 0, 80).Contains("solid") ? LoadText(Encoding.ASCII.GetString(data)) : LoadBinary(data));

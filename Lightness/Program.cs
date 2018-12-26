@@ -9,11 +9,15 @@ using PrettyPrinter;
 
 namespace Lightness {
 	class Program {
+		public static string BaseDirectory;
+	
 		static void Main(string[] args) {
 			if(args.Length != 2) {
 				Console.Error.WriteLine("Usage: dotnet run <script.lua> <output.svg>");
 				Environment.Exit(1);
 			}
+
+			BaseDirectory = Path.GetDirectoryName(Path.GetFullPath(args[0]));
 			
 			"Loading".Debug();
 			var scene = new Scene();
@@ -27,6 +31,11 @@ namespace Lightness {
 			script.Globals["PerspectiveCamera"] = typeof(PerspectiveCamera);
 			script.Globals["PI"] = MathF.PI;
 			script.DoStream(File.OpenRead(args[0]));
+
+			if(scene.Camera == null) {
+				Console.Error.WriteLine("ERROR: Camera not assigned to scene.");
+				Environment.Exit(1);
+			}
 			
 			"Rendering".Debug();
 			var renderer = new Renderer.Renderer(scene, (scene.Width, scene.Height));
