@@ -5,7 +5,7 @@ namespace Lightness.Renderer {
 	[MoonSharpUserData]
 	public class Scene {
 		public int Width = 4000, Height = 4000;
-		public bool Preview;
+		public bool Preview, EdgePreview;
 		public Camera Camera;
 		public readonly List<Model> Models = new List<Model>();
 

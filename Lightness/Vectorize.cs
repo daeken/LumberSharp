@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using Lightness.Renderer;
+using PrettyPrinter;
 
 namespace Lightness {
 	public class Vectorize {
@@ -12,12 +13,14 @@ namespace Lightness {
 		
 		readonly List<List<(int, int)>> FinalPaths;
 		
-		public Vectorize(Pixel[] pixels, int width, int height) {
+		public Vectorize(Pixel[] pixels, int width, int height, bool edgePreview) {
 			Pixels = pixels;
 			Width = width;
 			Height = height;
 			
 			FindDepthDelta();
+			if(edgePreview) return;
+			
 			RemoveNonEdges();
 			FloodFill();
 			RemoveNoise();
@@ -57,7 +60,7 @@ namespace Lightness {
 					pixel.DepthDelta = neighborDepthDeltas.Max();
 					var neighborAngleDeltas = sampleNeighbors(x, y).Select(n => n == null ? MathF.PI : MathF.Abs(MathF.Acos(Vector3.Dot(pixel.Normal, n.Normal))));
 					pixel.AngleDelta = neighborAngleDeltas.Max();
-					pixel.Edge = pixel.DepthDelta > 0.00001f || pixel.AngleDelta > MathF.PI / 2;
+					pixel.Edge = pixel.DepthDelta > 0.00001f || pixel.AngleDelta > MathF.PI / 4;
 				}
 		}
 
@@ -148,24 +151,33 @@ namespace Lightness {
 
 		List<List<(int, int)>> Pathify(List<((int, int), (int, int))> lines) {
 			var paths = new List<List<(int, int)>>();
+			var mp = new Dictionary<(int, int), List<(int, int)>>();
 			foreach(var (a, b) in lines) {
-				var found = false;
-				foreach(var path in paths) {
-					var end = path[path.Count - 1];
-					if(end == a || end == b) {
-						path.Add(end == b ? a : b);
-						found = true;
-						break;
-					}
-					var start = path[0];
-					if(start == a || start == b) {
-						path.Add(start == b ? a : b);
-						found = true;
-						break;
-					}
+				var path = mp.ContainsKey(a) ? mp[a] : mp.ContainsKey(b) ? mp[b] : null;
+				if(path == null) {
+					path = new List<(int, int)> { a, b };
+					paths.Add(path);
+					mp[a] = path;
+					mp[b] = path;
+					continue;
 				}
-				if(!found)
-					paths.Add(new List<(int, int)> { a, b });
+
+				var end = path[path.Count - 1];
+				if(end == a || end == b) {
+					var v = end == a ? b : a;
+					path.Add(v);
+					mp.Remove(end);
+					mp[v] = path;
+					continue;
+				}
+				var start = path[0];
+				if(start == a || start == b) {
+					var v = start == a ? b : a;
+					path.Insert(0, v);
+					mp.Remove(start);
+					mp[v] = path;
+				} else
+					throw new NotSupportedException();
 			}
 			return paths;
 		}
@@ -181,7 +193,7 @@ namespace Lightness {
 
 		float Dist((int, int) a, (int, int) b) {
 			var (c, d) = (b.Item1 - a.Item1, b.Item2 - a.Item2);
-			return MathF.Sqrt(c * c + d * d);
+			return c * c + d * d;
 		}
 
 		List<List<(int, int)>> ReorderPaths(List<List<(int, int)>> paths) {
@@ -218,7 +230,7 @@ namespace Lightness {
 			var npaths = new List<List<(int, int)>> { paths[0] };
 			foreach(var path in paths.Skip(1)) {
 				var dist = Dist(path[0], last);
-				if(dist < 10)
+				if(dist < 100)
 					npaths.Last().AddRange(path.Skip(1));
 				else
 					npaths.Add(path);

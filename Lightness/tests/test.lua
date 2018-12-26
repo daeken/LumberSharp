@@ -1,6 +1,6 @@
-scene.width = 8000;
-scene.height = 8000;
-scene.preview = false;
+scene.width = 10000;
+scene.height = 10000;
+scene.edgePreview = false;
 page.width = 297;
 page.height = 420;
 
@@ -22,3 +22,9 @@ scene.add(radioTower.rotate(vec3(0, 0, 1), PI / 4).translate(vec3(0, 250, -100))
 
 --csphere = StlLoader.load("csphere4.stl");
 --scene.add(csphere.rotate(vec3(1, 0, 0), -PI / 3).rotate(vec3(0, 0, 1), -PI / 6).translate(vec3(0, -50, 0)));
+
+--cbox = StlLoader.load("cbox.stl");
+--scene.add(cbox.rotate(vec3(1, 0, 0), -PI / 3).rotate(vec3(0, 0, 1), -PI / 6).translate(vec3(0, -50, 0)));
+
+--cbox = StlLoader.load("twist.stl");
+--scene.add(cbox.translate(vec3(0, -50, 0)));

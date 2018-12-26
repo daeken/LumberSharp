@@ -42,19 +42,26 @@ namespace Lightness {
 			"Rendering".Debug();
 			var renderer = new Renderer.Renderer(scene, (scene.Width, scene.Height));
 			renderer.Rendered += pixels => {
-				if(scene.Preview) {
+				if(scene.Preview || scene.EdgePreview) {
+					if(scene.EdgePreview)
+						new Vectorize(pixels, scene.Width, scene.Height, true);
 					"Outputting image".Debug();
-					var nimage = new Image(ColorMode.Rgb, (scene.Width, scene.Height),
-						pixels.Select(x => x == null ? new byte[] { 0, 0, 0 } : new[] {
-							ToColor(x.Normal.X / 2f + .5f), ToColor(x.Normal.Y / 2f + .5f), 
-							ToColor(x.Normal.Z / 2f + .5f)
-						}).SelectMany(x => x).ToArray()
-					);
+					var nimage = scene.EdgePreview
+						? new Image(ColorMode.Greyscale, (scene.Width, scene.Height),
+							pixels.Select(x => new[] { x == null || !x.Edge ? (byte) 0 : (byte) 255 })
+								.SelectMany(x => x).ToArray())
+						: new Image(ColorMode.Rgb, (scene.Width, scene.Height),
+							pixels.Select(x => x == null
+								? new byte[] { 0, 0, 0 }
+								: new[] {
+									ToColor(x.Normal.X / 2f + .5f), ToColor(x.Normal.Y / 2f + .5f),
+									ToColor(x.Normal.Z / 2f + .5f)
+								}).SelectMany(x => x).ToArray());
 					using(var fp = File.OpenWrite("preview.png"))
 						Png.Encode(nimage, fp);
 				} else {
 					"Vectorizing".Debug();
-					var vectorize = new Vectorize(pixels, scene.Width, scene.Height);
+					var vectorize = new Vectorize(pixels, scene.Width, scene.Height, false);
 					vectorize.Output(args[1], page);
 				}
 			};
