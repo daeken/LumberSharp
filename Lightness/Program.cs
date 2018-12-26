@@ -4,53 +4,47 @@ using System.Linq;
 using System.Numerics;
 using ImageLib;
 using Lightness.Renderer;
+using MoonSharp.Interpreter;
 using PrettyPrinter;
 
 namespace Lightness {
 	class Program {
 		static void Main(string[] args) {
-			"Loading".Print();
+			if(args.Length != 2) {
+				Console.Error.WriteLine("Usage: dotnet run <script.lua> <output.svg>");
+				Environment.Exit(1);
+			}
+			
+			"Loading".Debug();
 			var scene = new Scene();
-			//var egg2Mesh = StlLoader.Load("egg-2.stl");
-			//scene.Add(new Model(egg2Mesh).Rotate(Vector3.UnitZ, MathF.PI / 5).Translate(new Vector3(0, 30, -25)));
-			//var radioTowerMesh = StlLoader.Load("radiotower.stl");
-			//scene.Add(new Model(radioTowerMesh).Rotate(Vector3.UnitZ, MathF.PI / 4).Translate(new Vector3(0, 250, -100)));
-			//var statueMesh = StlLoader.Load("statue.stl");
-			//scene.Add(new Model(statueMesh).Translate(new Vector3(-225, -225, -60)));
-			//var vaseMesh = StlLoader.Load("vase.stl");
-			//scene.Add(new Model(vaseMesh).Translate(new Vector3(0, 1000, 0)));
-			//var csphereMesh = StlLoader.Load("csphere4.stl");
-			//scene.Add(new Model(csphereMesh).Rotate(Vector3.UnitX, -MathF.PI / 3).Rotate(Vector3.UnitZ, -MathF.PI / 6).Translate(new Vector3(0, -50, 0)));
-			var knotMesh = StlLoader.Load("knot.stl");
-			scene.Add(new Model(knotMesh).Rotate(Vector3.UnitZ, MathF.PI / 3).Translate(new Vector3(5, 0, -10)));
 			
-			var camera = new PerspectiveCamera {
-				Up = Vector3.UnitZ, 
-				Position = new Vector3(0, -100, 0), 
-				LookAt = Vector3.Zero, 
-				FOV = 45
-			};
-
-			const int width = 4000;
-			const int height = 4000;
+			UserData.RegisterAssembly(typeof(Program).Assembly);
+			UserData.RegisterType<Vector3>();
+			var script = new Script();
+			script.Globals["vec3"] = (Func<float, float, float, Vector3>) ((a, b, c) => new Vector3(a, b, c));
+			script.Globals["scene"] = scene;
+			script.Globals["StlLoader"] = typeof(StlLoader);
+			script.Globals["PerspectiveCamera"] = typeof(PerspectiveCamera);
+			script.Globals["PI"] = MathF.PI;
+			script.DoStream(File.OpenRead(args[0]));
 			
-			"Rendering".Print();
-			var renderer = new Renderer.Renderer(scene, camera, (width, height));
+			"Rendering".Debug();
+			var renderer = new Renderer.Renderer(scene, (scene.Width, scene.Height));
 			renderer.Rendered += pixels => {
-				if(false) {
-					"Outputting image".Print();
-					var nimage = new Image(ColorMode.Rgb, (width, height),
+				if(scene.Preview) {
+					"Outputting image".Debug();
+					var nimage = new Image(ColorMode.Rgb, (scene.Width, scene.Height),
 						pixels.Select(x => x == null ? new byte[] { 0, 0, 0 } : new[] {
 							ToColor(x.Normal.X / 2f + .5f), ToColor(x.Normal.Y / 2f + .5f), 
 							ToColor(x.Normal.Z / 2f + .5f)
 						}).SelectMany(x => x).ToArray()
 					);
-					using(var fp = File.OpenWrite("test4kn.png"))
+					using(var fp = File.OpenWrite("preview.png"))
 						Png.Encode(nimage, fp);
 				} else {
-					"Vectorizing".Print();
-					var vectorize = new Vectorize(pixels, width, height);
-					vectorize.Output("test.svg");
+					"Vectorizing".Debug();
+					var vectorize = new Vectorize(pixels, scene.Width, scene.Height);
+					vectorize.Output(args[1]);
 				}
 			};
 			renderer.Render();

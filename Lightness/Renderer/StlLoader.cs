@@ -3,14 +3,16 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Text;
+using MoonSharp.Interpreter;
 
 namespace Lightness.Renderer {
+	[MoonSharpUserData]
 	public static class StlLoader {
-		public static IReadOnlyList<Triangle> Load(string fn) {
+		public static Model Load(string fn) {
 			using(var fp = File.OpenRead(fn)) {
 				var data = new byte[fp.Length];
 				fp.Read(data, 0, data.Length);
-				return Encoding.ASCII.GetString(data, 0, 80).Contains("solid") ? LoadText(Encoding.ASCII.GetString(data)) : LoadBinary(data);
+				return new Model(Encoding.ASCII.GetString(data, 0, 80).Contains("solid") ? LoadText(Encoding.ASCII.GetString(data)) : LoadBinary(data));
 			}
 		}
 

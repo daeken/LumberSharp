@@ -9,17 +9,15 @@ using Vector3 = System.Numerics.Vector3;
 namespace Lightness.Renderer {
 	public class Renderer : GameWindow {
 		readonly Scene Scene;
-		readonly Camera Camera;
 		public new readonly (int Width, int Height) Size;
 		
 		public event Action<Pixel[]> Rendered;
 		
-		public Renderer(Scene scene, Camera camera, (int Width, int Height) size) : base(
+		public Renderer(Scene scene, (int Width, int Height) size) : base(
 			100, 100, GraphicsMode.Default, "Lightness",
 			GameWindowFlags.Default, DisplayDevice.Default, 4, 1, GraphicsContextFlags.ForwardCompatible
 		) {
 			Scene = scene;
-			Camera = camera;
 			Size = size;
 		}
 
@@ -29,9 +27,9 @@ namespace Lightness.Renderer {
 			var fbo = new FrameBuffer(Size.Width, Size.Height, FrameBufferAttachment.Xyz, FrameBufferAttachment.Depth);
 			fbo.Bind();
 
-			Camera.AspectRatio = Size.Width / (float) Size.Height;
+			Scene.Camera.AspectRatio = Size.Width / (float) Size.Height;
 
-			var projectionViewMat = Camera.Matrix;
+			var projectionViewMat = Scene.Camera.Matrix;
 			
 			var program = new Program(@"
 #version 410

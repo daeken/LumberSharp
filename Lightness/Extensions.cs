@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
@@ -77,5 +78,7 @@ namespace Lightness {
 
 		public static float ComponentMin(this Vector3 v) => Min(Min(v.X, v.Y), v.Z);
 		public static float ComponentMax(this Vector3 v) => Max(Max(v.X, v.Y), v.Z);
+
+		public static void Debug(this string str) => Console.WriteLine(str);
 	}
 }

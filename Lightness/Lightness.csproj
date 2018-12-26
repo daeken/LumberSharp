@@ -15,6 +15,7 @@
     </PropertyGroup>
 
     <ItemGroup>
+      <PackageReference Include="moonsharp" Version="2.0.0.0" />
       <PackageReference Include="MoreLinq" Version="3.1.0" />
       <PackageReference Include="OpenTK.NETCore" Version="1.1.2749.6433" />
       <PackageReference Include="PrettyPrinter" Version="1.0.0" />

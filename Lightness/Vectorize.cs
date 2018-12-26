@@ -4,7 +4,6 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using Lightness.Renderer;
-using PrettyPrinter;
 
 namespace Lightness {
 	public class Vectorize {
@@ -27,7 +26,7 @@ namespace Lightness {
 			while(true) {
 				var pcount = paths.Count;
 				paths = JoinPaths(paths);
-				$"{pcount} -> {paths.Count} Paths".Print();
+				$"{pcount} -> {paths.Count} Paths".Debug();
 				if(paths.Count >= pcount)
 					break;
 				paths = ReorderPaths(paths);
@@ -48,7 +47,7 @@ namespace Lightness {
 			Neighbors.Select(t => sample(x + t.Item1, y + t.Item2));
 
 		void FindDepthDelta() {
-			"Finding depth deltas".Print();
+			"Finding depth deltas".Debug();
 			for(int y = 0, i = 0; y < Height; ++y)
 				for(var x = 0; x < Width; ++x, ++i) {
 					var pixel = Pixels[i];
@@ -96,7 +95,7 @@ namespace Lightness {
 		}
 
 		void FloodFill() {
-			"Flood filling".Print();
+			"Flood filling".Debug();
 			for(int y = 0, i = 0; y < Height; ++y)
 				for(var x = 0; x < Width; ++x, ++i)
 					if(Pixels[i] != null && !Pixels[i].Flooded)
@@ -122,7 +121,7 @@ namespace Lightness {
 				return sum;
 			}
 			
-			$"Tracing patch of {patch.Count} pixels".Print();
+			$"Tracing patch of {patch.Count} pixels".Debug();
 			
 			var lines = new List<((int, int), (int, int))>();
 			var queue = new Queue<((int, int), (int, int))>();
@@ -172,11 +171,11 @@ namespace Lightness {
 		}
 
 		List<List<(int, int)>> Trace() {
-			"Tracing patches".Print();
+			"Tracing patches".Debug();
 			var lines = new List<((int, int), (int, int))>();
 			foreach(var patch in Patches)
 				lines.AddRange(TracePatch(patch));
-			"Lines to paths".Print();
+			"Lines to paths".Debug();
 			return Pathify(lines);
 		}
 
@@ -186,7 +185,7 @@ namespace Lightness {
 		}
 
 		List<List<(int, int)>> ReorderPaths(List<List<(int, int)>> paths) {
-			"Reordering paths".Print();
+			"Reordering paths".Debug();
 			var last = paths[0].Last();
 			var npaths = new List<List<(int, int)>> { paths[0] };
 			var remaining = paths.Skip(1).ToList();
@@ -214,7 +213,7 @@ namespace Lightness {
 		}
 
 		List<List<(int, int)>> JoinPaths(List<List<(int, int)>> paths) {
-			"Combining paths".Print();
+			"Combining paths".Debug();
 			var last = paths[0].Last();
 			var npaths = new List<List<(int, int)>> { paths[0] };
 			foreach(var path in paths.Skip(1)) {
@@ -231,7 +230,7 @@ namespace Lightness {
 		List<(int, int)> SimplifyPath(List<(int, int)> path) {
 			if(path.Count < 3) return path;
 
-			//$"Path elements {path.Count}".Print();
+			//$"Path elements {path.Count}".Debug();
 
 			var tris = new List<Triangle2D>();
 			for(var i = 0; i < path.Count - 2; ++i) {
@@ -268,18 +267,18 @@ namespace Lightness {
 				npoints.Add(tri.B);
 			npoints.Add(tris.Last().C);
 			
-			//$"New path count {npoints.Count}".Print();
+			//$"New path count {npoints.Count}".Debug();
 
 			return npoints.Select(x => ((int) MathF.Round(x.X), (int) MathF.Round(x.Y))).ToList();
 		}
 
 		List<List<(int, int)>> SimplifyPaths(List<List<(int, int)>> paths) {
-			"Simplifying paths".Print();
+			"Simplifying paths".Debug();
 			return paths.Select(SimplifyPath).ToList();
 		}
 
 		public void Output(string fn) {
-			"Writing SVG".Print();
+			"Writing SVG".Debug();
 			using(var fp = File.Open(fn, FileMode.Create, FileAccess.Write))
 				using(var sw = new StreamWriter(fp)) {
 					sw.WriteLine("<?xml version=\"1.0\" encoding=\"utf-8\" ?>");
