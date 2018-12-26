@@ -32,7 +32,9 @@ namespace Lightness {
 					break;
 				paths = ReorderPaths(paths);
 			}
-			FinalPaths = SimplifyPaths(paths);
+			paths = SimplifyPaths(paths);
+			paths = ReorderPaths(paths);
+			FinalPaths = paths;
 		}
 
 		static readonly (int, int)[] Neighbors = {
@@ -52,9 +54,11 @@ namespace Lightness {
 					var pixel = Pixels[i];
 					if(pixel == null) continue;
 
-					var neighborDeltas = sampleNeighbors(x, y).Select(n => n == null ? pixel.Depth : MathF.Abs(pixel.Depth - n.Depth));
-					pixel.DepthDelta = neighborDeltas.Max();
-					pixel.Edge = pixel.DepthDelta > 0.00001f;
+					var neighborDepthDeltas = sampleNeighbors(x, y).Select(n => n == null ? pixel.Depth : MathF.Abs(pixel.Depth - n.Depth));
+					pixel.DepthDelta = neighborDepthDeltas.Max();
+					var neighborAngleDeltas = sampleNeighbors(x, y).Select(n => n == null ? MathF.PI : MathF.Abs(MathF.Acos(Vector3.Dot(pixel.Normal, n.Normal))));
+					pixel.AngleDelta = neighborAngleDeltas.Max();
+					pixel.Edge = pixel.DepthDelta > 0.00001f || pixel.AngleDelta > MathF.PI / 2;
 				}
 		}
 
@@ -215,7 +219,7 @@ namespace Lightness {
 			var npaths = new List<List<(int, int)>> { paths[0] };
 			foreach(var path in paths.Skip(1)) {
 				var dist = Dist(path[0], last);
-				if(dist < 4)
+				if(dist < 10)
 					npaths.Last().AddRange(path.Skip(1));
 				else
 					npaths.Add(path);
@@ -243,11 +247,11 @@ namespace Lightness {
 				var min = 0;
 				var minArea = tris[0].Area;
 				for(var i = 1; i < tris.Count; ++i)
-					if(tris[i].Area < min) {
+					if(tris[i].Area < minArea) {
 						min = i;
 						minArea = tris[i].Area;
 					}
-				if(minArea > 50) break;
+				if(minArea > 10) break;
 				if(min > 0) {
 					tris[min - 1].C = tris[min].C;
 					tris[min - 1].UpdateArea();
