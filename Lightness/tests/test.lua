@@ -1,6 +1,6 @@
-scene.width = 1000;
-scene.height = 1000;
-scene.preview = true;
+scene.width = 4000;
+scene.height = 4000;
+scene.preview = false;
 
 scene.camera = PerspectiveCamera.create();
 scene.camera.position = vec3(0, -100, 0);
