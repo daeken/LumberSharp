@@ -25,15 +25,10 @@ namespace Lightness {
 			FloodFill();
 			RemoveNoise();
 			var paths = Trace();
+			paths = TriviallyJoinPaths(paths);
+			paths = SimplifyPaths(paths);
 			paths = ReorderPaths(paths);
-			while(true) {
-				var pcount = paths.Count;
-				paths = JoinPaths(paths);
-				$"{pcount} -> {paths.Count} Paths".Debug();
-				if(paths.Count >= pcount)
-					break;
-				paths = ReorderPaths(paths);
-			}
+			paths = JoinPaths(paths);
 			paths = SimplifyPaths(paths);
 			paths = ReorderPaths(paths);
 			FinalPaths = paths;
@@ -60,7 +55,7 @@ namespace Lightness {
 					pixel.DepthDelta = neighborDepthDeltas.Max();
 					var neighborAngleDeltas = sampleNeighbors(x, y).Select(n => n == null ? MathF.PI : MathF.Abs(MathF.Acos(Vector3.Dot(pixel.Normal, n.Normal))));
 					pixel.AngleDelta = neighborAngleDeltas.Max();
-					pixel.Edge = pixel.DepthDelta > 0.00001f || pixel.AngleDelta > MathF.PI / 4;
+					pixel.Edge = pixel.DepthDelta > 0.00001f || pixel.AngleDelta >= MathF.PI / 4;
 				}
 		}
 
@@ -105,7 +100,7 @@ namespace Lightness {
 						Flood(x, y);
 		}
 
-		void RemoveNoise() => Patches.RemoveAll(x => x.Count <= 10);
+		void RemoveNoise() => Patches.RemoveAll(x => x.Count <= 16);
 
 		List<((int, int), (int, int))> TracePatch(List<(int, int)> patch) {
 			var pixels = new bool[Width * Height];
@@ -168,16 +163,13 @@ namespace Lightness {
 					path.Add(v);
 					mp.Remove(end);
 					mp[v] = path;
-					continue;
-				}
-				var start = path[0];
-				if(start == a || start == b) {
+				} else {
+					var start = path[0];
 					var v = start == a ? b : a;
 					path.Insert(0, v);
 					mp.Remove(start);
 					mp[v] = path;
-				} else
-					throw new NotSupportedException();
+				}
 			}
 			return paths;
 		}
@@ -202,26 +194,29 @@ namespace Lightness {
 			var npaths = new List<List<(int, int)>> { paths[0] };
 			var remaining = paths.Skip(1).ToList();
 			while(remaining.Count != 0) {
-				(float, List<(int, int)>, bool) closest = (float.PositiveInfinity, null, false);
-				foreach(var elem in remaining) {
+				(float, int, bool) closest = (float.PositiveInfinity, -1, false);
+				var count = remaining.Count;
+				for(var i = 0; i < count; ++i) {
+					var elem = remaining[i];
 					var sd = Dist(last, elem[0]);
 					var ed = Dist(last, elem.Last());
 					if(sd <= ed && sd < closest.Item1) {
-						closest = (sd, elem, false);
+						closest = (sd, i, false);
 						if(sd == 0) break;
 					}
 					else if(ed < sd && ed < closest.Item1) {
-						closest = (ed, elem, true);
+						closest = (ed, i, true);
 						if(ed == 0) break;
 					}
 				}
-				var cpath = closest.Item2;
-				remaining.Remove(cpath);
-				if(closest.Item3) cpath.Reverse();
-				last = cpath.Last();
+				var (_, ci, crev) = closest;
+				var cpath = remaining[ci];
+				remaining.RemoveAt(ci);
+				if(crev) cpath.Reverse();
+				last = cpath[cpath.Count - 1];
 				npaths.Add(cpath);
 			}
-			return paths;
+			return npaths;
 		}
 
 		List<List<(int, int)>> JoinPaths(List<List<(int, int)>> paths) {
@@ -236,6 +231,52 @@ namespace Lightness {
 					npaths.Add(path);
 				last = path.Last();
 			}
+			return npaths;
+		}
+
+		List<List<(int, int)>> TriviallyJoinPaths(List<List<(int, int)>> paths) {
+			"Trivially combining paths".Debug();
+			var mp = new Dictionary<(int, int), List<(int, int)>>();
+
+			foreach(var path in paths) {
+				var start = path[0];
+				var end = path[path.Count - 1];
+				if(mp.ContainsKey(start)) {
+					var cpath = mp[start];
+					var cstart = cpath[0];
+					if(cstart == start) {
+						path.Reverse();
+						cpath.InsertRange(0, path.SkipLast(1));
+						mp.Remove(start);
+						mp[end] = cpath;
+					} else {
+						cpath.AddRange(path.Skip(1));
+						mp.Remove(start);
+						mp[end] = cpath;
+					}
+				} else if(mp.ContainsKey(end)) {
+					var cpath = mp[end];
+					var cstart = cpath[0];
+					if(cstart == end) {
+						cpath.InsertRange(0, path.SkipLast(1));
+						mp.Remove(end);
+						mp[start] = cpath;
+					} else {
+						path.Reverse();
+						cpath.AddRange(path.Skip(1));
+						mp.Remove(end);
+						mp[start] = cpath;
+					}
+				} else {
+					mp[start] = path;
+					mp[end] = path;
+				}
+			}
+
+			var npaths = new List<List<(int, int)>>();
+			foreach(var v in mp.Values)
+				if(!npaths.Contains(v))
+					npaths.Add(v);
 			return npaths;
 		}
 
@@ -262,7 +303,9 @@ namespace Lightness {
 						min = i;
 						minArea = tris[i].Area;
 					}
-				if(minArea > 10) break;
+				var minTri = tris[min];
+				var extent = (minTri.A - minTri.C).Length();
+				if(minArea > extent * 5) break;
 				if(min > 0) {
 					tris[min - 1].C = tris[min].C;
 					tris[min - 1].UpdateArea();

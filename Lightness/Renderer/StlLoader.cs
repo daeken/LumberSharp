@@ -8,12 +8,33 @@ using MoonSharp.Interpreter;
 namespace Lightness.Renderer {
 	[MoonSharpUserData]
 	public static class StlLoader {
-		public static Model Load(string fn) {
+		public static Model Load(string fn, bool recenter = false) {
 			using(var fp = File.OpenRead(Path.Combine(Lightness.Program.BaseDirectory, fn))) {
 				var data = new byte[fp.Length];
 				fp.Read(data, 0, data.Length);
-				return new Model(Encoding.ASCII.GetString(data, 0, 80).Contains("solid") ? LoadText(Encoding.ASCII.GetString(data)) : LoadBinary(data));
+				var mesh = Encoding.ASCII.GetString(data, 0, 80).Contains("solid")
+					? LoadText(Encoding.ASCII.GetString(data))
+					: LoadBinary(data);
+				if(recenter)
+					mesh = Recenter(mesh);
+				return new Model(mesh);
 			}
+		}
+
+		static IReadOnlyList<Triangle> Recenter(IReadOnlyList<Triangle> mesh) {
+			var low = new Vector3(float.PositiveInfinity, float.PositiveInfinity, float.PositiveInfinity);
+			var high = new Vector3(float.NegativeInfinity, float.NegativeInfinity, float.NegativeInfinity);
+			foreach(var tri in mesh) {
+				low = Vector3.Min(tri.A, low);
+				low = Vector3.Min(tri.B, low);
+				low = Vector3.Min(tri.C, low);
+				high = Vector3.Max(tri.A, high);
+				high = Vector3.Max(tri.B, high);
+				high = Vector3.Max(tri.C, high);
+			}
+			var extents = high - low;
+			var center = extents / 2 + low;
+			return mesh.Select(x => new Triangle(x.A - center, x.B - center, x.C - center, x.NA, x.NB, x.NC)).ToList();
 		}
 
 		static IReadOnlyList<Triangle> LoadBinary(byte[] data) {

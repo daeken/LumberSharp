@@ -14,6 +14,9 @@ scene.camera.lookAt = vec3(0, 0, 0);
 --egg2 = StlLoader.load("egg-2.stl");
 --scene.add(egg2.rotate(vec3(0, 0, 1), PI / 5).translate(vec3(0, 30, -25)));
 
+--egg = StlLoader.load("knotwork-egg.stl");
+--scene.add(egg.rotate(vec3(0, 0, 1), PI / 5).translate(vec3(0, 30, -35)));
+
 radioTower = StlLoader.load("radiotower.stl");
 scene.add(radioTower.rotate(vec3(0, 0, 1), PI / 4).translate(vec3(0, 250, -100)));
 
@@ -26,5 +29,14 @@ scene.add(radioTower.rotate(vec3(0, 0, 1), PI / 4).translate(vec3(0, 250, -100))
 --cbox = StlLoader.load("cbox.stl");
 --scene.add(cbox.rotate(vec3(1, 0, 0), -PI / 3).rotate(vec3(0, 0, 1), -PI / 6).translate(vec3(0, -50, 0)));
 
---cbox = StlLoader.load("twist.stl");
---scene.add(cbox.translate(vec3(0, -50, 0)));
+--twist = StlLoader.load("twist2.stl");
+--scene.add(twist.translate(vec3(0, -50, 0)));
+
+--column = StlLoader.load("column.stl");
+--scene.add(column.translate(vec3(0, -50, -10)));
+
+--suzanne = StlLoader.load("suzanne.stl");
+--scene.add(suzanne);
+
+--pony = StlLoader.load("cthulupony.stl", true);
+--scene.add(pony.rotate(vec3(0, 0, 1), PI / 4).translate(vec3(0, -25, 0)));
