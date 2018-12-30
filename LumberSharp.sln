@@ -8,6 +8,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Lightness", "Lightness\Ligh
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ParticlePlot", "ParticlePlot\ParticlePlot.csproj", "{7962BBFB-4C4F-4E16-AB47-2F700E98B945}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Common", "Common\Common.csproj", "{882FBB9C-6449-41C2-ACDD-2E4863C11D34}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -30,5 +32,9 @@ Global
 		{7962BBFB-4C4F-4E16-AB47-2F700E98B945}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7962BBFB-4C4F-4E16-AB47-2F700E98B945}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7962BBFB-4C4F-4E16-AB47-2F700E98B945}.Release|Any CPU.Build.0 = Release|Any CPU
+		{882FBB9C-6449-41C2-ACDD-2E4863C11D34}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{882FBB9C-6449-41C2-ACDD-2E4863C11D34}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{882FBB9C-6449-41C2-ACDD-2E4863C11D34}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{882FBB9C-6449-41C2-ACDD-2E4863C11D34}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

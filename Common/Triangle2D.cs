@@ -1,7 +1,7 @@
 using System;
 using System.Numerics;
 
-namespace Lightness.Renderer {
+namespace Common {
 	public class Triangle2D : IComparable {
 		public Vector2 A, B, C;
 		public float Area;

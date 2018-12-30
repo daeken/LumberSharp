@@ -2,6 +2,7 @@
 using System.IO;
 using System.Linq;
 using System.Numerics;
+using Common;
 using ImageLib;
 using Lightness.Renderer;
 using MoonSharp.Interpreter;
@@ -25,6 +26,7 @@ namespace Lightness {
 			
 			UserData.RegisterAssembly(typeof(Program).Assembly);
 			UserData.RegisterType<Vector3>();
+			UserData.RegisterType<Page>();
 			var script = new Script();
 			script.Globals["vec3"] = (Func<float, float, float, Vector3>) ((a, b, c) => new Vector3(a, b, c));
 			script.Globals["scene"] = scene;

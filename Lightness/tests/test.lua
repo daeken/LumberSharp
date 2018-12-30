@@ -17,8 +17,8 @@ scene.camera.lookAt = vec3(0, 0, 0);
 --egg = StlLoader.load("knotwork-egg.stl");
 --scene.add(egg.rotate(vec3(0, 0, 1), PI / 5).translate(vec3(0, 30, -35)));
 
---radioTower = StlLoader.load("radiotower.stl");
---scene.add(radioTower.rotate(vec3(0, 0, 1), PI / 4).translate(vec3(0, 250, -100)));
+radioTower = StlLoader.load("radiotower.stl");
+scene.add(radioTower.rotate(vec3(0, 0, 1), PI / 4).translate(vec3(0, 250, -100)));
 
 --statue = StlLoader.load("statue.stl");
 --scene.add(statue.translate(vec3(-225, -225, -60)));
@@ -41,5 +41,5 @@ scene.camera.lookAt = vec3(0, 0, 0);
 --pony = StlLoader.load("cthulupony.stl", true);
 --scene.add(pony.rotate(vec3(0, 0, 1), PI / 4).translate(vec3(0, -25, 0)));
 
-boxes = StlLoader.load("boxes.stl", true);
-scene.add(boxes.rotate(vec3(0, 1, 1), -PI / 4).translate(vec3(0, -50, 0)));
+--boxes = StlLoader.load("boxes.stl", true);
+--scene.add(boxes.rotate(vec3(0, 1, 1), -PI / 4).translate(vec3(0, -50, 0)));
