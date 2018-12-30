@@ -51,11 +51,11 @@ namespace Lightness {
 					var pixel = Pixels[i];
 					if(pixel == null) continue;
 
-					var neighborDepthDeltas = sampleNeighbors(x, y).Select(n => n == null ? pixel.Depth : MathF.Abs(pixel.Depth - n.Depth));
+					var neighborDepthDeltas = sampleNeighbors(x, y).Select(n => n == null ? float.PositiveInfinity : MathF.Abs(pixel.Depth - n.Depth));
 					pixel.DepthDelta = neighborDepthDeltas.Max();
 					var neighborAngleDeltas = sampleNeighbors(x, y).Select(n => n == null ? MathF.PI : MathF.Abs(MathF.Acos(Vector3.Dot(pixel.Normal, n.Normal))));
 					pixel.AngleDelta = neighborAngleDeltas.Max();
-					pixel.Edge = pixel.DepthDelta > 0.00001f || pixel.AngleDelta >= MathF.PI / 4;
+					pixel.Edge = pixel.DepthDelta == float.PositiveInfinity || pixel.DepthDelta > 0.00005f || pixel.AngleDelta >= MathF.PI / 4;
 				}
 		}
 
