@@ -15,6 +15,7 @@
 
     <ItemGroup>
       <ProjectReference Include="..\Common\Common.csproj" />
+      <ProjectReference Include="..\ImageLib\ImageLib.csproj" />
     </ItemGroup>
 
 </Project>

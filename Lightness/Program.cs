@@ -4,9 +4,8 @@ using System.Linq;
 using System.Numerics;
 using Common;
 using ImageLib;
+using IronPython.Hosting;
 using Lightness.Renderer;
-using MoonSharp.Interpreter;
-using PrettyPrinter;
 
 namespace Lightness {
 	class Program {
@@ -14,7 +13,7 @@ namespace Lightness {
 	
 		static void Main(string[] args) {
 			if(args.Length != 2) {
-				Console.Error.WriteLine("Usage: dotnet run <script.lua> <output.svg>");
+				Console.Error.WriteLine("Usage: dotnet run <script.py> <output.svg>");
 				Environment.Exit(1);
 			}
 
@@ -24,17 +23,18 @@ namespace Lightness {
 			var scene = new Scene();
 			var page = new Page();
 			
-			UserData.RegisterAssembly(typeof(Program).Assembly);
-			UserData.RegisterType<Vector3>();
-			UserData.RegisterType<Page>();
-			var script = new Script();
-			script.Globals["vec3"] = (Func<float, float, float, Vector3>) ((a, b, c) => new Vector3(a, b, c));
-			script.Globals["scene"] = scene;
-			script.Globals["page"] = page;
-			script.Globals["StlLoader"] = typeof(StlLoader);
-			script.Globals["PerspectiveCamera"] = typeof(PerspectiveCamera);
-			script.Globals["PI"] = MathF.PI;
-			script.DoStream(File.OpenRead(args[0]));
+			var engine = Python.CreateEngine();
+			var scope = engine.CreateScope();
+			var source = engine.CreateScriptSourceFromFile(args[0]);
+			scope.SetVariable("vec3", (Func<float, float, float, Vector3>) ((a, b, c) => new Vector3(a, b, c)));
+			scope.SetVariable("scene", scene);
+			scope.SetVariable("page", page);
+			scope.SetVariable("StlLoader", typeof(StlLoader));
+			scope.SetVariable("LoadStl", (Func<string, Model>) (fn => StlLoader.Load(fn)));
+			scope.SetVariable("LoadStlCentered", (Func<string, Model>) (fn => StlLoader.Load(fn, true)));
+			scope.SetVariable("PerspectiveCamera", typeof(PerspectiveCamera));
+			scope.SetVariable("PI", MathF.PI);
+			source.Execute(scope);
 
 			if(scene.Camera == null) {
 				Console.Error.WriteLine("ERROR: Camera not assigned to scene.");

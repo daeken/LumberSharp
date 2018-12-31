@@ -1,9 +1,7 @@
 using System.Collections.Generic;
 using System.Numerics;
-using MoonSharp.Interpreter;
 
 namespace Lightness.Renderer {
-	[MoonSharpUserData]
 	public class Model {
 		public readonly IReadOnlyList<Triangle> Mesh;
 		public Matrix4x4 Transform = Matrix4x4.Identity;

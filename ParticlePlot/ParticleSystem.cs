@@ -10,10 +10,12 @@ namespace ParticlePlot {
 		public readonly List<Thing> Things = new List<Thing>();
 		public readonly Random Random = new Random();
 
-		public IEnumerable<Particle> AllParticles => Particles.Concat(DeadParticles);
+		public IEnumerable<Particle> AllParticles => ShowDead ? Particles.Concat(DeadParticles) : Particles;
 		
 		public float Time, TimeDelta;
 		public Vector2 LowerBound, UpperBound;
+
+		public bool ShowDead = true;
 		
 		public void Run(float seconds, float step) {
 			TimeDelta = step;
@@ -27,6 +29,7 @@ namespace ParticlePlot {
 						var particle = Particles[i];
 						if(particle.Position.X < LowerBound.X || particle.Position.Y < LowerBound.Y ||
 						   particle.Position.X > UpperBound.X || particle.Position.Y > UpperBound.Y) {
+							particle.PositionHistory.RemoveAt(particle.PositionHistory.Count - 1);
 							DeadParticles.Add(particle);
 							Particles.RemoveAt(i);
 						}

@@ -64,6 +64,9 @@ namespace ImageLib {
 			bw.Flush();
 		}
 
+		public static Image Decode(string fn) =>
+			Decode(fn, File.OpenRead(fn));
+
 		public static Image Decode(string name, Stream stream) {
 			var br = new BeBinaryReader(stream, Encoding.Default, leaveOpen: true);
 

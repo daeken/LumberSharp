@@ -1,8 +1,6 @@
 using System.Collections.Generic;
-using MoonSharp.Interpreter;
 
 namespace Lightness.Renderer {
-	[MoonSharpUserData]
 	public class Scene {
 		public int Width = 4000, Height = 4000;
 		public bool Preview, EdgePreview;

@@ -3,10 +3,8 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Text;
-using MoonSharp.Interpreter;
 
 namespace Lightness.Renderer {
-	[MoonSharpUserData]
 	public static class StlLoader {
 		public static Model Load(string fn, bool recenter = false) {
 			using(var fp = File.OpenRead(Path.Combine(Lightness.Program.BaseDirectory, fn))) {
