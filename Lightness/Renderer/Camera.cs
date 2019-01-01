@@ -10,8 +10,9 @@ namespace Lightness.Renderer {
 		public float AspectRatio;
 		
 		protected abstract Matrix4x4 ProjectionMatrix { get; }
-		
-		public Matrix4x4 Matrix => Matrix4x4.CreateLookAt(Position, LookAt, Up) * ProjectionMatrix;
+
+		public Matrix4x4 ViewMatrix => Matrix4x4.CreateLookAt(Position, LookAt, Up);
+		public Matrix4x4 Matrix => ViewMatrix * ProjectionMatrix;
 	}
 
 	public class PerspectiveCamera : Camera {

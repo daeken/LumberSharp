@@ -35,6 +35,10 @@ namespace Lightness.Renderer {
 					fixed(ushort* p = vdata)
 						GL.BufferData(target, vdata.Length * 2, (IntPtr) p, usage);
 					break;
+				case Vector2[] vdata:
+					fixed(Vector2* p = vdata)
+						GL.BufferData(target, vdata.Length * 2 * 4, (IntPtr) p, usage);
+					break;
 				case Vector3[] vdata:
 					fixed(Vector3* p = vdata)
 						GL.BufferData(target, vdata.Length * 3 * 4, (IntPtr) p, usage);

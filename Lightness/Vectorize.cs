@@ -60,7 +60,7 @@ namespace Lightness {
 					pixel.DepthDelta = neighborDepthDeltas.Max();
 					var neighborAngleDeltas = sampleNeighbors(x, y).Select(n => n == null ? MathF.PI : MathF.Abs(MathF.Acos(Vector3.Dot(pixel.Normal, n.Normal))));
 					pixel.AngleDelta = neighborAngleDeltas.Max();
-					pixel.Edge = pixel.DepthDelta == float.PositiveInfinity || pixel.DepthDelta > 0.00005f || pixel.AngleDelta >= MathF.PI / 4;
+					pixel.Edge = pixel.DepthDelta > .05 || pixel.AngleDelta >= MathF.PI / 6;
 				}
 		}
 
@@ -107,7 +107,7 @@ namespace Lightness {
 
 		void RemoveNoise() => Patches.RemoveAll(x => x.Count <= 16);
 
-		List<(Vector2, Vector2)> TracePatch(List<(int, int)> patch) {
+		List<List<Vector2>> TracePatch(List<(int, int)> patch) {
 			var pixels = new bool[Width * Height];
 			foreach(var (x, y) in patch)
 				pixels[y * Width + x] = true;
@@ -146,46 +146,15 @@ namespace Lightness {
 					queue.Enqueue(((nx, ny), (x, y)));
 			}
 			
-			return lines;
-		}
-
-		List<List<Vector2>> Pathify(List<(Vector2, Vector2)> lines) {
-			var paths = new List<List<Vector2>>();
-			var mp = new Dictionary<Vector2, List<Vector2>>();
-			foreach(var (a, b) in lines) {
-				var path = mp.ContainsKey(a) ? mp[a] : mp.ContainsKey(b) ? mp[b] : null;
-				if(path == null) {
-					path = new List<Vector2> { a, b };
-					paths.Add(path);
-					mp[a] = path;
-					mp[b] = path;
-					continue;
-				}
-
-				var end = path[path.Count - 1];
-				if(end == a || end == b) {
-					var v = end == a ? b : a;
-					path.Add(v);
-					mp.Remove(end);
-					mp[v] = path;
-				} else {
-					var start = path[0];
-					var v = start == a ? b : a;
-					path.Insert(0, v);
-					mp.Remove(start);
-					mp[v] = path;
-				}
-			}
-			return paths;
+			return SegmentsToPaths(lines);
 		}
 
 		List<List<Vector2>> Trace() {
 			"Tracing patches".Debug();
-			var lines = new List<(Vector2, Vector2)>();
+			var paths = new List<List<Vector2>>();
 			foreach(var patch in Patches)
-				lines.AddRange(TracePatch(patch));
-			"Lines to paths".Debug();
-			return Pathify(lines);
+				paths.AddRange(TracePatch(patch));
+			return paths;
 		}
 	}
 }

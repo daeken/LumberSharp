@@ -6,6 +6,36 @@ using System.Numerics;
 
 namespace Common {
 	public static class SvgHelper {
+		public static List<List<Vector2>> SegmentsToPaths(List<(Vector2, Vector2)> lines) {
+			var paths = new List<List<Vector2>>();
+			var mp = new Dictionary<Vector2, List<Vector2>>();
+			foreach(var (a, b) in lines) {
+				var path = mp.ContainsKey(a) ? mp[a] : mp.ContainsKey(b) ? mp[b] : null;
+				if(path == null) {
+					path = new List<Vector2> { a, b };
+					paths.Add(path);
+					mp[a] = path;
+					mp[b] = path;
+					continue;
+				}
+
+				var end = path[path.Count - 1];
+				if(end == a || end == b) {
+					var v = end == a ? b : a;
+					path.Add(v);
+					mp.Remove(end);
+					mp[v] = path;
+				} else {
+					var start = path[0];
+					var v = start == a ? b : a;
+					path.Insert(0, v);
+					mp.Remove(start);
+					mp[v] = path;
+				}
+			}
+			return paths;
+		}
+		
 		public static List<List<Vector2>> ReorderPaths(List<List<Vector2>> paths) {
 			var last = paths[0].Last();
 			var npaths = new List<List<Vector2>> { paths[0] };

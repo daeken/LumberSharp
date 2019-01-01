@@ -98,8 +98,8 @@ namespace Lightness.Renderer {
 		}
 
 		public float[] ReadAttachment(FrameBufferAttachment attachment) {
-			var data = new float[Width * Height * (attachment == FrameBufferAttachment.Depth ? 1 : 3)];
-			GL.ReadPixels(0, 0, Width, Height, attachment == FrameBufferAttachment.Depth ? PixelFormat.DepthComponent : PixelFormat.Rgb, PixelType.Float, data);
+			var data = new float[Width * Height * (attachment == FrameBufferAttachment.Depth ? 1 : 4)];
+			GL.ReadPixels(0, 0, Width, Height, attachment == FrameBufferAttachment.Depth ? PixelFormat.DepthComponent : PixelFormat.Rgba, PixelType.Float, data);
 			return data;
 		}
 	}

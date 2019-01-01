@@ -6,6 +6,7 @@ using Common;
 using ImageLib;
 using IronPython.Hosting;
 using Lightness.Renderer;
+using PrettyPrinter;
 
 namespace Lightness {
 	class Program {
@@ -20,21 +21,29 @@ namespace Lightness {
 			BaseDirectory = Path.GetDirectoryName(Path.GetFullPath(args[0]));
 			
 			"Loading".Debug();
-			var scene = new Scene();
-			var page = new Page();
 			
 			var engine = Python.CreateEngine();
 			var scope = engine.CreateScope();
+			engine.CreateScriptSourceFromString(@"
+import clr
+clr.AddReference('Lightness')
+clr.AddReference('Common')
+from System.MathF import *
+from Lightness import *
+from Lightness.Renderer import *
+from Common import *
+			").Execute(scope);
 			var source = engine.CreateScriptSourceFromFile(args[0]);
 			scope.SetVariable("vec3", (Func<float, float, float, Vector3>) ((a, b, c) => new Vector3(a, b, c)));
-			scope.SetVariable("scene", scene);
-			scope.SetVariable("page", page);
-			scope.SetVariable("StlLoader", typeof(StlLoader));
-			scope.SetVariable("LoadStl", (Func<string, Model>) (fn => StlLoader.Load(fn)));
-			scope.SetVariable("LoadStlCentered", (Func<string, Model>) (fn => StlLoader.Load(fn, true)));
-			scope.SetVariable("PerspectiveCamera", typeof(PerspectiveCamera));
-			scope.SetVariable("PI", MathF.PI);
 			source.Execute(scope);
+
+			if(!scope.TryGetVariable<Scene>("scene", out var scene)) {
+				Console.Error.WriteLine("ERROR: No scene defined.");
+				Environment.Exit(1);
+			}
+
+			if(!scope.TryGetVariable<Page>("page", out var page))
+				page = new Page();
 
 			if(scene.Camera == null) {
 				Console.Error.WriteLine("ERROR: Camera not assigned to scene.");
