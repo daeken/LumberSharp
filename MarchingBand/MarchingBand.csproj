@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>netcoreapp3.0</TargetFramework>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <PackageReference Include="ICSharpCode.Decompiler" Version="5.0.0.5124" />
+      <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="3.4.0-beta1-final" />
+      <PackageReference Include="PrettyPrinter" Version="1.0.0" />
+    </ItemGroup>
+
+</Project>
