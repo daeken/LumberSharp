@@ -27,10 +27,12 @@ namespace Lightness {
 			engine.CreateScriptSourceFromString(@"
 import clr
 clr.AddReference('Lightness')
+clr.AddReference('MarchingBand')
 clr.AddReference('Common')
 from System.MathF import *
 from Lightness import *
 from Lightness.Renderer import *
+from MarchingBand.ShaderMath import *
 from Common import *
 			").Execute(scope);
 			var source = engine.CreateScriptSourceFromFile(args[0]);

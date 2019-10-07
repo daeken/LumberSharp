@@ -1,27 +1,22 @@
-﻿using System;
 using System.Numerics;
 using MarchingBand;
 using static MarchingBand.ShaderMath;
 
-namespace ShaderRunner {
-	struct Pixel {
-		//public Vec3 Normal;
-		//public float Depth;
+namespace Lightness {
+	public struct OutputPixel {
 		public Vec4 NormalDepth;
 	}
 
-	class Shader : BaseShader<Pixel> {
+	public abstract class BaseMarchShader : BaseShader<OutputPixel> {
 		public Vec3 uCameraPosition;
 		public Matrix4x4 uCameraMatrix;
 		
-		public override Pixel Evaluate(Vec2 position) {
+		public override OutputPixel Evaluate(Vec2 position) {
 			var rayDirection = (uCameraMatrix * vec4(normalize(vec3(position, 2)), 0)).xyz;
 
 			var t = CastRay(uCameraPosition, rayDirection);
 			return t != 100000
-				? new Pixel {
-					NormalDepth = vec4(CalcNormal(uCameraPosition + t * rayDirection), t)
-				}
+				? new OutputPixel { NormalDepth = vec4(CalcNormal(uCameraPosition + t * rayDirection), t) }
 				: default;
 		}
 
@@ -47,24 +42,15 @@ namespace ShaderRunner {
 			                 e.xxx * Map(pos + e.xxx));
 		}
 		
-		float Torus(Vec3 p, Vec2 t) =>
+		public float Torus(Vec3 p, Vec2 t) =>
 			length(vec2(length(p.xz) - t.x, p.y)) - t.y;
 		
-		Vec3 OpTwist(Vec3 p) {
+		public Vec3 OpTwist(Vec3 p) {
 			var c = cos(10 * p.y + 10);
 			var s = sin(10 * p.y + 10);
 			return vec3(p.x * c - p.z * s, p.x * s + p.z * c, p.y);
 		}
 
-		float Map(Vec3 pos) {
-			return 0.5f * Torus(OpTwist(pos - vec3(-2, 0.25f, 2)), vec2(0.2f, 0.05f));
-		}
-	}
-	
-	class Program {
-		static void Main(string[] args) {
-			var shader = new Shader();
-			Console.WriteLine(shader.CompileGlsl());
-		}
+		protected abstract float Map(Vec3 pos);
 	}
 }
