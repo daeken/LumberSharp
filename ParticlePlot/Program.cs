@@ -41,9 +41,9 @@ namespace ParticlePlot {
 				Environment.Exit(1);
 			}
 
-			paths = SvgHelper.SimplifyPaths(paths, 2);
+			paths = SvgHelper.SimplifyPaths(paths, 5);
 			paths = SvgHelper.ReorderPaths(paths);
-			SvgHelper.Output(args[1], paths, page);
+			SvgHelper.Output(args[1], paths.Select(x => ("black", x)).ToList(), page, true);
 		}
 	}
 }

@@ -14,6 +14,14 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MarchingBand", "MarchingBan
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ShaderRunner", "ShaderRunner\ShaderRunner.csproj", "{7987507E-CBD3-49F1-94AF-9775C5991DED}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Animatrix", "Animatrix\Animatrix.csproj", "{6F725433-0CDA-409F-9BDC-C98E55FDF934}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Fractaler", "Fractaler\Fractaler.csproj", "{EE546326-586C-4CC7-8710-50FC763D27B5}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DuoContour", "DuoContour\DuoContour.csproj", "{72F99433-F40B-4113-8C41-3385A4CF78A6}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TriContour", "TriContour\TriContour.csproj", "{30CB66C9-5CFF-4FBB-8453-47056EDD19AB}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -48,5 +56,21 @@ Global
 		{7987507E-CBD3-49F1-94AF-9775C5991DED}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7987507E-CBD3-49F1-94AF-9775C5991DED}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7987507E-CBD3-49F1-94AF-9775C5991DED}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6F725433-0CDA-409F-9BDC-C98E55FDF934}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6F725433-0CDA-409F-9BDC-C98E55FDF934}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6F725433-0CDA-409F-9BDC-C98E55FDF934}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6F725433-0CDA-409F-9BDC-C98E55FDF934}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EE546326-586C-4CC7-8710-50FC763D27B5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EE546326-586C-4CC7-8710-50FC763D27B5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EE546326-586C-4CC7-8710-50FC763D27B5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EE546326-586C-4CC7-8710-50FC763D27B5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{72F99433-F40B-4113-8C41-3385A4CF78A6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{72F99433-F40B-4113-8C41-3385A4CF78A6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{72F99433-F40B-4113-8C41-3385A4CF78A6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{72F99433-F40B-4113-8C41-3385A4CF78A6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{30CB66C9-5CFF-4FBB-8453-47056EDD19AB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{30CB66C9-5CFF-4FBB-8453-47056EDD19AB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{30CB66C9-5CFF-4FBB-8453-47056EDD19AB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{30CB66C9-5CFF-4FBB-8453-47056EDD19AB}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

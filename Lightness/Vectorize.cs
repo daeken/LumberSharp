@@ -37,7 +37,7 @@ namespace Lightness {
 		}
 
 		public void Output(string fn, Page page) =>
-			SvgHelper.Output(fn, FinalPaths, page);
+			SvgHelper.Output(fn, FinalPaths.Select(x => ("black", x)).ToList(), page);
 
 		static readonly (int, int)[] Neighbors = {
 			(-1, -1), (0, -1), (1, -1), 
@@ -60,7 +60,7 @@ namespace Lightness {
 					pixel.DepthDelta = neighborDepthDeltas.Max();
 					var neighborAngleDeltas = sampleNeighbors(x, y).Select(n => n == null ? MathF.PI : MathF.Abs(MathF.Acos(Vector3.Dot(pixel.Normal, n.Normal))));
 					pixel.AngleDelta = neighborAngleDeltas.Max();
-					pixel.Edge = pixel.DepthDelta > .05 || pixel.AngleDelta >= MathF.PI / 6;
+					pixel.Edge = pixel.DepthDelta > .025 || pixel.AngleDelta >= MathF.PI / 2.01;
 				}
 		}
 

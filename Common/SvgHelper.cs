@@ -1,8 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Drawing.Drawing2D;
 using System.IO;
 using System.Linq;
 using System.Numerics;
+using System.Xml;
+using PrettyPrinter;
+using SvgNet;
+using SvgNet.SvgElements;
+using SvgNet.SvgTypes;
 
 namespace Common {
 	public static class SvgHelper {
@@ -37,6 +43,7 @@ namespace Common {
 		}
 		
 		public static List<List<Vector2>> ReorderPaths(List<List<Vector2>> paths) {
+			if(paths.Count <= 1) return paths;
 			var last = paths[0].Last();
 			var npaths = new List<List<Vector2>> { paths[0] };
 			var remaining = paths.Skip(1).ToList();
@@ -65,7 +72,7 @@ namespace Common {
 			}
 			return npaths;
 		}
-		
+
 		static List<Vector2> SimplifyPath(List<Vector2> path, float minAreaRatio) {
 			if(path.Count < 3) return path;
 
@@ -104,16 +111,19 @@ namespace Common {
 			
 			return npoints;
 		}
+
+		public static List<List<Vector2>> ScalePaths(List<List<Vector2>> paths, float scale) =>
+			paths.Select(path => path.Select(p => p * scale).ToList()).ToList();
 		
 		public static List<List<Vector2>> SimplifyPaths(List<List<Vector2>> paths, float minAreaRatio) =>
-			paths.Select(x => SimplifyPath(x, minAreaRatio)).ToList();
+			paths.AsParallel().Select(x => SimplifyPath(x, minAreaRatio)).ToList();
 		
-		public static List<List<Vector2>> JoinPaths(List<List<Vector2>> paths) {
+		public static List<List<Vector2>> JoinPaths(List<List<Vector2>> paths, float minDist = 100) {
 			var last = paths[0].Last();
 			var npaths = new List<List<Vector2>> { paths[0] };
 			foreach(var path in paths.Skip(1)) {
 				var dist = (path[0] - last).LengthSquared();
-				if(dist < 100)
+				if(dist < minDist)
 					npaths.Last().AddRange(path.Skip(1));
 				else
 					npaths.Add(path);
@@ -166,11 +176,148 @@ namespace Common {
 					npaths.Add(v);
 			return npaths;
 		}
+
+		public static (Vector2 Lower, Vector2 Upper) GetBounds(List<List<Vector2>> paths) {
+			var minX = float.PositiveInfinity;
+			var minY = float.PositiveInfinity;
+			var maxX = float.NegativeInfinity;
+			var maxY = float.NegativeInfinity;
+			foreach(var path in paths)
+				foreach(var point in path) {
+					if(point.X < minX) minX = point.X;
+					if(point.X > maxX) maxX = point.X;
+					if(point.Y < minY) minY = point.Y;
+					if(point.Y > maxY) maxY = point.Y;
+				}
+
+			return (new(minX, minY), new(maxX, maxY));
+		}
+
+		public static float CalcDrawDistance(List<List<Vector2>> paths) =>
+			paths.Select(path => path.SkipLast(1).Zip(path.Skip(1))
+				.Select(x => (x.Second - x.First).Length()).Sum()).Sum();
+
+		public static List<List<Vector2>> Fit(List<List<Vector2>> paths, Vector2 size) {
+			var (offset, ub) = GetBounds(paths);
+
+			var osize = ub - offset;
+			Console.WriteLine($"{osize.X} {osize.Y} vs {size.X} {size.Y}");
+			if(osize.X <= size.X && osize.Y <= size.Y) return paths;
+
+			var scale = (osize.X >= osize.Y) ? size.X / osize.X : size.Y / osize.Y;
+			var push = new Vector2(
+				osize.X * scale < size.X ? (size.X - osize.X * scale) / 2 : 0, 
+				osize.Y * scale < size.Y ? (size.Y - osize.Y * scale) / 2 : 0
+			);
+
+			return paths.Select(path => path.Select(x => (x - offset) * scale + push).ToList()).ToList();
+		}
+
+		public static List<(string Color, List<Vector2> Points)> PathsFromSvg(string fn) {
+			var xml = new XmlDocument();
+			xml.LoadXml(File.ReadAllText(fn));
+			var svg = SvgFactory.LoadFromXML(xml, null);
+			var paths = new List<(string Color, List<Vector2> Points)>();
+			foreach(var elem in svg.Children)
+				switch(elem) {
+					case SvgElement element:
+						paths.AddRange(PathsFromElement(element, Matrix4x4.Identity));
+						break;
+					default:
+						throw new NotImplementedException($"Foo? {elem}");
+				}
+			return paths;
+		}
+
+		static IEnumerable<(string Color, List<Vector2> Points)> PathsFromElement(SvgElement element, Matrix4x4 transform) {
+			var curTransform = transform;
+			if(element is SvgStyledTransformedElement ste)
+				curTransform = FlattenTransforms(ste.Transform, transform);
+
+			Vector2 T(Vector2 p) {
+				var tp = Vector4.Transform(p, curTransform);
+				return new Vector2(tp.X, tp.Y);
+			}
+			
+			switch(element) {
+				case SvgPathElement pe:
+					var de = pe["d"] switch { SvgPath sp => sp, string s => new SvgPath(s), _ => throw new NotSupportedException() };
+					var pos = Vector2.Zero;
+					var lines = new List<(Vector2, Vector2)>();
+					var first = Vector2.Zero;
+					for(var i = 0; i < de.Count; ++i) {
+						var ps = de[i];
+						switch(ps.Type) {
+							case SvgPathSegType.SVG_SEGTYPE_MOVETO:
+								pos = (ps.Abs ? Vector2.Zero : pos) + new Vector2(ps.Data[0], ps.Data[1]);
+								break;
+							case SvgPathSegType.SVG_SEGTYPE_LINETO:
+								var tgt = (ps.Abs ? Vector2.Zero : pos) + new Vector2(ps.Data[0], ps.Data[1]);
+								lines.Add((pos, tgt));
+								pos = tgt;
+								break;
+							case SvgPathSegType.SVG_SEGTYPE_VLINETO:
+								var vtgt = ps.Abs ? new Vector2(pos.X, ps.Data[0]) : new Vector2(pos.X, pos.Y + ps.Data[0]);
+								lines.Add((pos, vtgt));
+								pos = vtgt;
+								break;
+							case SvgPathSegType.SVG_SEGTYPE_HLINETO:
+								var htgt = ps.Abs ? new Vector2(ps.Data[0], pos.Y) : new Vector2(pos.X + ps.Data[0], pos.Y);
+								lines.Add((pos, htgt));
+								pos = htgt;
+								break;
+							case SvgPathSegType.SVG_SEGTYPE_CURVETO:
+								var c1 = (ps.Abs ? Vector2.Zero : pos) + new Vector2(ps.Data[0], ps.Data[1]);
+								var c2 = (ps.Abs ? Vector2.Zero : pos) + new Vector2(ps.Data[2], ps.Data[3]);
+								var end = (ps.Abs ? Vector2.Zero : pos) + new Vector2(ps.Data[4], ps.Data[5]);
+								var points = CubicBezierToLines(pos, c1, c2, end).ToList();
+								lines.AddRange(points.SkipLast(1).Zip(points.Skip(1)));
+								pos = end;
+								break;
+							case SvgPathSegType.SVG_SEGTYPE_CLOSEPATH:
+								lines.Add((pos, first));
+								pos = first;
+								break;
+							default:
+								throw new NotImplementedException(ps.Type.ToString());
+						}
+						if(i == 0) first = pos;
+					}
+
+					var slines = lines.Select(x => new List<Vector2> { x.Item1, x.Item2 }).ToList();
+					foreach(var path in SimplifyPaths(TriviallyJoinPaths(slines), .5f))
+						yield return (GetColor(pe), path.Select(T).ToList());
+					break;
+			}
+			foreach(var elem in element.Children)
+				if(elem is SvgElement sub)
+					foreach(var path in PathsFromElement(sub, curTransform))
+						yield return path;
+		}
+
+		static string GetColor(SvgStyledTransformedElement ste) => (string) ste.Style["stroke"];
+
+		static IEnumerable<Vector2> CubicBezierToLines(Vector2 p0, Vector2 p1, Vector2 p2, Vector2 p3) {
+			for(var t = 0f; t < 1; t += 0.001f) {
+				var it3 = MathF.Pow(1 - t, 3);
+				var it2 = MathF.Pow(1 - t, 2);
+				var t3 = MathF.Pow(t, 3);
+				var t2 = MathF.Pow(t, 2);
+				yield return p0 * it3 + p1 * 3 * t * it2 + p2 * 3 * t2 * (1 - t) + p3 * t3;
+			}
+			yield return p3;
+		}
+
+		static Matrix4x4 FlattenTransforms(SvgTransformList stl, Matrix4x4 mat) {
+			return mat;
+		}
 		
-		public static void Output(string fn, List<List<Vector2>> paths, Page page) {
+		static Matrix4x4 ConvTransform(Matrix m) => Matrix4x4.Identity;
+		
+		public static void Output(string fn, List<(string Color, List<Vector2> Points)> paths, Page page, bool addBounds = false) {
 			float lowX = 100000f, lowY = 100000f;
 			float highX = 0f, highY = 0f;
-			foreach(var path in paths)
+			foreach(var (color, path) in paths)
 				foreach(var p in path) {
 					if(p.X < lowX) lowX = p.X;
 					if(p.Y < lowY) lowY = p.Y;
@@ -193,21 +340,56 @@ namespace Common {
 			var margin = new Vector2(page.LeftMargin + (usable.X - nsize.X) / 2, page.TopMargin + (usable.Y - nsize.Y) / 2);
 
 			const float fudge = 3.54329f;
-			var spaths = paths.Select(path => path.Select(pe => ((pe - off) * scale + margin) * fudge).ToList());
-			
-			using(var fp = File.Open(fn, FileMode.Create, FileAccess.Write))
-				using(var sw = new StreamWriter(fp)) {
-					sw.WriteLine("<?xml version=\"1.0\" encoding=\"utf-8\" ?>");
-					sw.WriteLine($"<svg baseProfile=\"tiny\" version=\"1.2\" width=\"{page.Width}mm\" height=\"{page.Height}mm\" viewbox=\"0 0 {page.Width} {page.Height}\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:ev=\"http://www.w3.org/2001/xml-events\" xmlns:xlink=\"http://www.w3.org/1999/xlink\"><defs />");
-					foreach(var path in spaths) {
-						var f = path[0];
-						sw.Write($"<path d=\"M {f.X} {f.Y}");
-						foreach(var n in path.Skip(1))
-							sw.Write($" L {n.X} {n.Y}");
-						sw.WriteLine("\" fill=\"red\" fill-opacity=\"0\" stroke=\"black\" stroke-width=\"1\" />");
+			var spaths = paths.GroupBy(x => x.Color)
+				.Select(x => (x.Key,
+					x.Select(y => y.Points.Select(pe => ((pe - off) * scale + margin) * fudge).ToList()).ToList()))
+				.ToDictionary(x => x.Key, x => x.Item2);
+
+			lowX = 100000f;
+			lowY = 100000f;
+			highX = 0f;
+			highY = 0f;
+			foreach(var cpaths in spaths.Values)
+				foreach(var path in cpaths)
+					foreach(var p in path) {
+						if(p.X < lowX) lowX = p.X;
+						if(p.Y < lowY) lowY = p.Y;
+						if(p.X > highX) highX = p.X;
+						if(p.Y > highY) highY = p.Y;
 					}
-					sw.WriteLine("</svg>");
+
+			using var fp = File.Open(fn, FileMode.Create, FileAccess.Write);
+			using var sw = new StreamWriter(fp);
+			sw.WriteLine("<?xml version=\"1.0\" encoding=\"utf-8\" ?>");
+			sw.WriteLine($"<svg baseProfile=\"tiny\" version=\"1.2\" width=\"{page.Width}mm\" height=\"{page.Height}mm\" viewbox=\"0 0 {page.Width} {page.Height}\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:ev=\"http://www.w3.org/2001/xml-events\" xmlns:xlink=\"http://www.w3.org/1999/xlink\"><defs />");
+			foreach(var sspaths in spaths.GroupBy(x => x.Key.Contains("###") ? x.Key.Split("###", 2)[1] : "")) {
+				sw.WriteLine("<g>");
+				foreach(var (color, cpaths) in sspaths.OrderBy(x => x.Key.Split("###")[0] == "black")) {
+					sw.Write("<path d=\"");
+					foreach(var path in cpaths) {
+						var f = path[0];
+						sw.Write($"M {f.X} {f.Y} ");
+						foreach(var n in path.Skip(1))
+							sw.Write($"L {n.X} {n.Y} ");
+					}
+					sw.WriteLine(
+						$"\" fill=\"rgba(255,255,255,0.5)\" fill-opacity=\"0\" stroke=\"{color.Split("###")[0]}\" stroke-width=\"1\" />");
 				}
+				sw.WriteLine("</g>");
+			}
+
+			if(addBounds) {
+				var cutMargin = 25;
+				sw.Write("<path d=\"");
+				sw.Write($"M {lowX + cutMargin} {lowY + cutMargin} ");
+				sw.Write($"L {highX - cutMargin} {lowY + cutMargin} ");
+				sw.Write($"L {highX - cutMargin} {highY - cutMargin} ");
+				sw.Write($"L {lowX + cutMargin} {highY - cutMargin}");
+				sw.Write($"L {lowX + cutMargin} {lowY - cutMargin}");
+				sw.WriteLine("\" stroke=\"black\" fill-opacity=\"0\" stroke-width=\"1\" />");
+			}
+
+			sw.WriteLine("</svg>");
 		}
 	}
 }

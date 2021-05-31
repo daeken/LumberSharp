@@ -20,23 +20,23 @@ scene.Camera.LookAt = vec3(0, 0, 0)
 #egg = StlLoader.Load("knotwork-egg.stl")
 #scene.Add(egg.Rotate(vec3(0, 0, 1), PI / 5).Translate(vec3(0, 30, -35)))
 
-radioTower = StlLoader.Load("radiotower.stl")
-scene.Add(radioTower.Rotate(vec3(0, 0, 1), PI / 4).Translate(vec3(0, 250, -100)))
+#radioTower = StlLoader.Load("radiotower.stl")
+#scene.Add(radioTower.Rotate(vec3(0, 0, 1), PI / 4).Translate(vec3(0, 250, -100)))
 
-# statue = StlLoader.Load("statue.stl")
-# scene.Add(statue.Translate(vec3(-225, -225, -60)))
+#statue = StlLoader.Load("statue.stl")
+#scene.Add(statue.Translate(vec3(-225, -225, -60)))
 
 # csphere = StlLoader.Load("csphere4.stl")
 # scene.Add(csphere.Rotate(vec3(1, 0, 0), -PI / 3).Rotate(vec3(0, 0, 1), -PI / 6).Translate(vec3(0, -50, 0)))
 
-# cbox = StlLoader.Load("cbox.stl")
-# scene.Add(cbox.Rotate(vec3(1, 0, 0), -PI / 3).Rotate(vec3(0, 0, 1), -PI / 6).Translate(vec3(0, -50, 0)))
+#cbox = StlLoader.Load("cbox.stl")
+#scene.Add(cbox.Rotate(vec3(1, 0, 0), -PI / 3).Rotate(vec3(0, 0, 1), -PI / 6).Translate(vec3(0, -50, 0)))
 
-# twist = StlLoader.Load("twist2.stl")
-# scene.Add(twist.Translate(vec3(0, -50, 0)))
+#twist = StlLoader.Load("twist2.stl")
+#scene.Add(twist.Translate(vec3(0, -50, 0)))
 
-# column = StlLoader.Load("column.stl")
-# scene.Add(column.Translate(vec3(0, -50, -10)))
+column = StlLoader.Load("column.stl")
+scene.Add(column.Translate(vec3(0, -50, -10)))
 
 # suzanne = StlLoader.Load("suzanne.stl")
 # scene.Add(suzanne)
