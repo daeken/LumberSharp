@@ -14,14 +14,14 @@ namespace Common {
 		
 		public QuadTree(List<Vector2> path, int maxSegmentsPerNode) : this(new List<List<Vector2>> { path }, maxSegmentsPerNode) {}
 
-		public QuadTree(List<List<Vector2>> paths, int maxSegmentsPerNode = 50) : this(
+		public QuadTree(List<List<Vector2>> paths, int maxSegmentsPerNode = 1000) : this(
 			paths.Select(path => path.SkipLast(1).Zip(path.Skip(1)).Select(OrderSegment)).SelectMany(x => x).ToList(),
 			SvgHelper.GetBounds(paths), maxSegmentsPerNode) {}
 
 		public QuadTree(List<(Vector2 A, Vector2 B)> segments, (Vector2 Lower, Vector2 Upper) bounds, int maxSegmentsPerNode) {
 			MaxSegmentsPerNode = maxSegmentsPerNode;
 			if(segments.Count <= MaxSegmentsPerNode) {
-				Segments = CleanSegments(segments);
+				Segments = segments;//CleanSegments(segments);
 				return;
 			}
 
