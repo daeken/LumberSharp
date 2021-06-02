@@ -119,6 +119,7 @@ namespace Common {
 			paths.AsParallel().Select(x => SimplifyPath(x, minAreaRatio)).ToList();
 		
 		public static List<List<Vector2>> JoinPaths(List<List<Vector2>> paths, float minDist = 100) {
+			if(paths.Count < 2) return paths;
 			var last = paths[0].Last();
 			var npaths = new List<List<Vector2>> { paths[0] };
 			foreach(var path in paths.Skip(1)) {
