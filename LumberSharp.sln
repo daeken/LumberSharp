@@ -22,6 +22,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DuoContour", "DuoContour\Du
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TriContour", "TriContour\TriContour.csproj", "{30CB66C9-5CFF-4FBB-8453-47056EDD19AB}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Demarkate", "Demarkate\Demarkate.csproj", "{C072A251-44FD-4B1A-B8C4-A11F4AE10C9C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -72,5 +74,9 @@ Global
 		{30CB66C9-5CFF-4FBB-8453-47056EDD19AB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{30CB66C9-5CFF-4FBB-8453-47056EDD19AB}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{30CB66C9-5CFF-4FBB-8453-47056EDD19AB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C072A251-44FD-4B1A-B8C4-A11F4AE10C9C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C072A251-44FD-4B1A-B8C4-A11F4AE10C9C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C072A251-44FD-4B1A-B8C4-A11F4AE10C9C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C072A251-44FD-4B1A-B8C4-A11F4AE10C9C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

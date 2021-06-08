@@ -7,44 +7,70 @@ using static Common.Helpers;
 using static System.MathF;
 using static System.Numerics.Vector3;
 
-namespace DuoContour {
+namespace TriContour {
 	class Program {
 		const float Epsilon = 0.001f;
 		const float Resolution = 0.01f;
-		static readonly float ResolutionCube = Pow(Resolution*Resolution*3, 1f/3);
+		static readonly float ResolutionSquare = Sqrt(Resolution*Resolution*2);
 
 		const float NearPlane = 1;
 		const float FarPlane = 1000;
 		static Matrix4x4 Projection = Matrix4x4.CreatePerspectiveFieldOfView(Tau / 4, 1, NearPlane, FarPlane);
-		static Vector3 CameraPos = new(-5f, -5f, -5f);
-		static Matrix4x4 View = Matrix4x4.CreateLookAt(CameraPos, new Vector3(0.0001f, 0.0001f, 1f), UnitY);
-		static Matrix4x4 ViewProject = View * Projection;
+		static Vector3 CameraPos;
+		static Matrix4x4 View;
+		static Matrix4x4 ViewProject;
+
+		static int Frame;
 
 		static void Main(string[] args) {
 			var bounds = (new Vector3(-5), new Vector3(5)); // FindBounds(Scene);
-			
-			Console.WriteLine(bounds);
 
 			var axes = new[] {
 				UnitX, 
 				UnitY, 
 				UnitZ
 			};
-			var paths = axes.Select(axis => Enumerable.Range(-12, 25).Select(x => x / 7f).Select(d => (axis, d)))
-				.SelectMany(x => x)
-				.AsParallel().Select(x => FindIsoLines(Scene, bounds, x.axis, x.d))
-				.SelectMany(x => x).ToList();
 
-			paths = SvgHelper.Fit(paths, new(1000));
-			Console.WriteLine($"Got {paths.Count} total isolines!");
+			var center = (Vector2?) null;
 
-			Console.WriteLine("ReorderPaths");
-			paths = SvgHelper.ReorderPaths(paths);
+			var rot = Tau / 4 / 5;
 
-			Console.WriteLine($"{paths.Count} after cleanup");
-			Console.WriteLine($"{SvgHelper.CalcDrawDistance(paths)} total units drawn");
+			var ap = new List<(string, List<Vector2>)>();
 
-			SvgHelper.Output("test.svg", paths.Select(x => ("black", x)).ToList(), new Page());
+			for(Frame = 0; Frame < 30; ++Frame) {
+				var crot = new Vector2(0, -5).Rotate(Frame * rot);
+				CameraPos = new(crot.X, -5f, crot.Y);
+				View = Matrix4x4.CreateLookAt(CameraPos, new Vector3(0.0001f, 0.0001f, 0.0001f), UnitY);
+				ViewProject = View * Projection;
+				
+				var paths = axes.Select(axis => Enumerable.Range(-12, 25).Select(x => x / 3f).Select(d => (axis, d)))
+					.SelectMany(x => x)
+					.AsParallel().Select(x => FindIsoLines(Scene, bounds, x.axis, x.d))
+					.SelectMany(x => x).ToList();
+
+				paths = SvgHelper.ScalePaths(paths, 250);
+				//paths = SvgHelper.Fit(paths, new(1000));
+				Console.WriteLine($"Got {paths.Count} total isolines!");
+
+				Console.WriteLine("ReorderPaths");
+				paths = SvgHelper.ReorderPaths(paths);
+
+				Console.WriteLine($"{paths.Count} after cleanup");
+				Console.WriteLine($"{SvgHelper.CalcDrawDistance(paths)} total units drawn");
+
+				if(center == null) {
+					var pbounds = SvgHelper.GetBounds(paths);
+					center = (pbounds.Upper + pbounds.Lower) / 2;
+				}
+
+				paths = paths.Select(path => path.Select(p => p - center.Value).ToList()).ToList();
+
+				var frame = Fiducial.CreateFrame(new(2000, 1300), (ushort) Frame);
+
+				ap.AddRange(paths.Select(x => ($"black###Frame{Frame+1}", x)).Concat(new[] { ($"green###Frame{Frame+1}", frame) }).Select(path => (path.Item1, path.Item2.Select(x => x + new Vector2(0, 2000 * Frame)).ToList())).ToList());
+			}
+			
+			SvgHelper.Output("frames_boxsphere.svg", ap, new Page { Width = 2100 / 10, Height = 2000 * Frame / 10 });
 		}
 
 		static Vector2 Project(Vector3 point) {
@@ -59,19 +85,17 @@ namespace DuoContour {
 				var p = from + rd * t;
 				var d = f(p);
 				if(Abs(d) <= Epsilon)
-					return (to - p).Length();
+					return t / (to - from).Length();
 				t += d * 0.9f;
 			}
-			return 0;
+			return 1;
 		}
 
 		static bool IsObscured(Func<Vector3, float> f, Vector3 p) {
 			p = FindClosestSurfacePoint(f, p);
 			var normal = FirstDerivative(f, p);
 			var rd = Normalize(p - CameraPos);
-			if(Dot(normal, rd) > 0.3f) return true;
-
-			return March(f, CameraPos, p) > 0.01f;
+			return March(f, CameraPos, p) < 0.999f;
 		}
 
 		static Vector3 FindLastObscured(Func<Vector3, float> f, Vector3 unobscured, Vector3 obscured) {
@@ -184,91 +208,82 @@ namespace DuoContour {
 			return paths;
 		}
 
-		static List<List<Vector2>> FindIsoLines(Func<Vector3, float> f, (Vector3, Vector3) bounds, Vector3 planeNormal, float planeOffset) {
+		static List<List<Vector2>> FindIsoLines(Func<Vector3, float> f3, (Vector3, Vector3) bounds, Vector3 planeNormal, float planeOffset) {
 			var points = new HashSet<Vector2>();
 			
 			var (lb, ub) = bounds;
-			var cp = (ub - lb) / 2 + lb;
 			var bd = (ub - lb).Apply(Max) / 2;
+			var planeOrigin = planeNormal * planeOffset;
 			var xAxis = (planeNormal - UnitX).LengthSquared() > Epsilon
 				? UnitX
 				: (planeNormal - UnitZ).LengthSquared() > Epsilon
 					? UnitZ
 					: UnitY;
 			var yAxis = Normalize(Cross(planeNormal, xAxis));
-			var g = f;
-			f = p => {
-				var d = Dot(planeNormal, p) - planeOffset;
-				return g(p - planeNormal * d);
-			};
+			var UpDimension = (Func<Vector2, Vector3>) (p => p.X * xAxis + p.Y * yAxis + planeOrigin);
+			var f = UpDimension.Compose(f3);
 
 			var steps = (int) Ceiling(bd / Resolution / 2);
 
-			var tpaths = new List<List<Vector3>>();
-			var planeOrigin = planeNormal * planeOffset;
-
-			var units = (xAxis, yAxis, planeNormal);
-
-			Vector3 ClosestPointOnPlane(Vector3 p) => p - planeNormal * Dot(planeNormal, p - planeOrigin);
+			var paths = new List<List<Vector2>>();
 
 			for(var y = -steps; y <= steps; ++y) {
-				var yLine = yAxis * (y * Resolution) + planeOrigin;
 				for(var x = -steps; x <= steps; ++x) {
-					var p = xAxis * (x * Resolution) + yLine;
-					if(!Inside(bounds, p)) continue;
-					if(Abs(g(p)) > ResolutionCube || Abs(f(p)) > ResolutionCube) continue;
+					var p = new Vector2(x * Resolution, y * Resolution);
+					if(!Inside(bounds, UpDimension(p))) continue;
+					if(Abs(f(p)) > ResolutionSquare) continue;
 					
-					var path = new List<Vector3>();
+					var path = new List<Vector2>();
+					var lastNormal = (Vector2?) null;
 					while(true) {
-						if(float.IsNaN(p.X)) break;
 						p = FindClosestSurfacePoint(f, p);
-						//p = ClosestPointOnPlane(p);
-						if(float.IsNaN(p.X)) break;
 						path.Add(p);
 
-						var rp = Project(p).Apply(v => Round(v, 2));
+						var rp = p.Apply(v => Round(v, 2));
 						if(points.Contains(rp)) break;
 						points.Add(rp);
-						var grad = GradientAlong(g, p, units);
-						var normal = Normalize(grad);
-						if(float.IsNaN(normal.X)) break;
-						var cr = Normalize(Cross(normal, planeNormal));
-						if(float.IsNaN(cr.X)) break;
-						var mag = Min(1, Abs(2 - (grad / Epsilon).Length()) * 2);
-						p += cr * (Resolution * Mix(13.01f, 8f, mag) / 2);
+						var normal = FirstDerivative(f, p);
+						if(float.IsNaN(normal.X)) {
+							if(lastNormal == null) break;
+							normal = lastNormal.Value;
+						}
+						lastNormal = normal;
+						p += normal.Rotate(Tau / 4) * (Resolution / 2);
 					}
 
 					if(path.Count > 1)
-						tpaths.Add(path);
+						paths.Add(path);
 				}
 			}
 
-			Console.WriteLine($"Got {tpaths.Count} isolines!");
-			if(tpaths.Count == 0) return new();
-			var sc = tpaths.Count;
+			Console.WriteLine($"Got {paths.Count} isolines!");
+			if(paths.Count == 0) return new();
+			var sc = paths.Count;
 
-			tpaths = tpaths
-				.Select(path => path.Select(p => ClosestPointOnPlane(FindClosestSurfacePoint(g, p))).ToList()).ToList();
-
-			tpaths = Join(g, tpaths);
-			tpaths = tpaths.Select(path => RemoveHiddenSegments(g, path)).SelectMany(x => x).ToList();
-			
-			Console.WriteLine($"Joined paths in 3d: {tpaths.Count} / {sc}");
-
-			tpaths = tpaths.Select(path => Subdivide(g, path).ToList()).ToList();
-			var paths = tpaths.Select(path => path.Select(Project).ToList()).ToList();
-			
-			//paths = new QuadTree(paths).GetPaths();
-			paths = SvgHelper.ScalePaths(paths, 1000);
-			paths = SvgHelper.ReorderPaths(paths);
-			paths = SvgHelper.JoinPaths(paths);
-			
+			paths = SvgHelper.ScalePaths(paths, 100);
 			paths = SvgHelper.TriviallyJoinPaths(paths);
 			paths = SvgHelper.ReorderPaths(paths);
+			paths = SvgHelper.JoinPaths(paths);
 			paths = SvgHelper.SimplifyPaths(paths, 0.1f);
 			paths = SvgHelper.ReorderPaths(paths);
+			paths = SvgHelper.JoinPaths(paths);
+			paths = SvgHelper.ScalePaths(paths, 1f / 100);
+			paths = SvgHelper.ReorderPaths(paths);
 
-			paths = SvgHelper.ScalePaths(paths, 1f / 1000);
+			var tpaths = paths.Select(path => path.Select(UpDimension).ToList()).ToList();
+			tpaths = tpaths.Select(path => Subdivide(f3, path).ToList()).ToList();
+			tpaths = tpaths.Select(path => RemoveHiddenSegments(f3, path)).SelectMany(x => x).ToList();
+			
+			paths = tpaths.Select(path => path.Select(Project).ToList()).ToList();
+
+			paths = SvgHelper.ScalePaths(paths, 100);
+			paths = SvgHelper.TriviallyJoinPaths(paths);
+			paths = SvgHelper.ReorderPaths(paths);
+			paths = SvgHelper.JoinPaths(paths);
+			paths = SvgHelper.SimplifyPaths(paths, 0.1f);
+			paths = SvgHelper.ReorderPaths(paths);
+			paths = SvgHelper.JoinPaths(paths);
+			paths = SvgHelper.ScalePaths(paths, 1f / 100);
 			paths = SvgHelper.ReorderPaths(paths);
 
 			Console.WriteLine($"{paths.Count} / {sc} after cleanup");
@@ -283,10 +298,22 @@ namespace DuoContour {
 			       lb.Z <= p.Z && p.Z <= ub.Z;
 		}
 
+		static Vector2 FindClosestSurfacePoint(Func<Vector2, float> f, Vector2 p) {
+			for(var i = 0; i < 10000; ++i) {
+				var d = f(p);
+				if(d is >= 0 and <= Epsilon) return p;
+				if(d < 0)
+					p -= FirstDerivative(f, p) * (d * 1.5f);
+				else
+					p -= FirstDerivative(f, p) * (d / 2);
+			}
+			return p;
+		}
+		
 		static Vector3 FindClosestSurfacePoint(Func<Vector3, float> f, Vector3 p) {
 			for(var i = 0; i < 10000; ++i) {
 				var d = f(p);
-				if(d >= 0 && d <= Epsilon) return p;
+				if(d is >= 0 and <= Epsilon) return p;
 				if(d < 0)
 					p -= FirstDerivative(f, p) * (d * 1.5f);
 				else
@@ -330,6 +357,15 @@ namespace DuoContour {
 			);
 		}
 
+		static Vector2 FirstDerivative(Func<Vector2, float> f, Vector2 p) =>
+			Vector2.Normalize(Gradient(f, p));
+		
+		static Vector2 Gradient(Func<Vector2, float> f, Vector2 p) =>
+			new(
+				f(new(p.X + Epsilon, p.Y)) - f(new(p.X - Epsilon, p.Y)),
+				f(new(p.X, p.Y + Epsilon)) - f(new(p.X, p.Y - Epsilon)) 
+			);
+		
 		static Vector3 FirstDerivative(Func<Vector3, float> f, Vector3 p) =>
 			Normalize(Gradient(f, p));
 
@@ -348,10 +384,14 @@ namespace DuoContour {
 			(f(p + Epsilon * u.Y) - f(p - Epsilon * u.Y)) * u.Y +
 			(f(p + Epsilon * u.Z) - f(p - Epsilon * u.Z)) * u.Z;
 
-		static float Scene(Vector3 p) => Intersect(Box(p, One * 1f), -Sphere(p, 1.2f));//, -Sphere(p + One * 1f, 1.15f));
+		static float Scene(Vector3 p) => Subtract(Box(p, One * 1f), Sphere(p, 1 + Max(-.02f, Min((Frame - 5) * .01f, .2f))));//, Sphere(p + One * .5f, 1.2f));
 
 		static float Union(params float[] objs) => objs.Min();
 		static float Intersect(params float[] objs) => objs.Max();
+		static float Subtract(params float[] objs) => objs.Take(1).Concat(objs.Skip(1).Select(x => -x)).Max();
+
+		static float Twist(Vector3 p, Vector3 axis, float angle, Func<Vector3, float> f) =>
+			f(Transform(p, Matrix4x4.CreateFromAxisAngle(axis, angle)));
 
 		static float Plane(Vector3 p, Vector3 n, float h) => Dot(p, n) + h;
 		
