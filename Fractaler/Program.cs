@@ -1,22 +1,35 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Numerics;
+using System.Threading;
 using Common;
+using DotnetNoise;
+using DoubleSharp.MathPlus;
 using static Common.Helpers;
 
 namespace Fractaler {
 	class Program {
 		const float Size = 1000;
+
+		static List<Vector2> Circle(float radius, Vector2? center = null, int steps = 100) {
+			center ??= Vector2.Zero;
+			var path = new List<Vector2>();
+			var p = new Vector2(0, radius);
+			for(var i = 0; i < steps; ++i)
+				path.Add(p.Rotate(i / (float) (steps - 1) * MathF.Tau) + center.Value);
+			return path;
+		}
 		
 		static void TileMain(string[] args) {
 			var paths = new List<List<Vector2>>();
-			var tileset = SvgHelper.PathsFromSvg("tiles2.svg");
+			var tileset = SvgParser.Load("tiles2.svg");
 			var scale = .5f;
 			var dscale = scale * 2;
 			var tiles = new[] { "#ff00ff", "#ffff00", "#00ffff" }
 				.Select(color =>
-					SvgHelper.Fit(tileset.Where(x => x.Color == color).Select(x => x.Points).ToList(), Vector2.One)
+					tileset.Where(x => x.Color == color).Select(x => x.Path).ToList().Fit(Vector2.One)
 						.Select(path => path.Select(x => new Vector2(x.X * dscale - scale, x.Y * dscale - scale)).ToList().ToList()))
 				.ToList();
 
@@ -48,10 +61,10 @@ namespace Fractaler {
 			Console.WriteLine("Joining paths");
 			//paths = SvgHelper.TriviallyJoinPaths(paths);
 
-			SvgHelper.Output("test.svg", paths.Select(x => ("black", x)).ToList(), new Page());
+			SvgHelper.Output("test.svg", paths.Select(x => ("black", x)).ToList(), new());
 		}
 
-		static void Main(string[] args) {
+		static void GreenPillowMain(string[] args) {
 			var paths = new List<List<Vector2>>();
 			
 			float S(float v) => v / MathF.Sqrt(1 + v*v);
@@ -67,7 +80,7 @@ namespace Fractaler {
 				var line = new List<Vector2>();
 				for(var i = 0; i < steps; ++i)
 					line.Add(P(a + step * i));
-				paths.AddRange(SvgHelper.SimplifyPaths(new List<List<Vector2>> { line }, .001f));
+				paths.AddRange(SvgHelper.SimplifyPaths(new() { line }, .001f));
 			}
 			
 			(int X, int Y) Rot((int X, int Y) p, int n, bool rx, bool ry) {
@@ -106,31 +119,31 @@ namespace Fractaler {
 			}
 
 			Console.WriteLine("Joining paths");
-			paths = SvgHelper.TriviallyJoinPaths(paths);
+			paths = paths.TriviallyJoinPaths();
 			Console.WriteLine("Simplifying paths");
-			paths = SvgHelper.SimplifyPaths(paths, 0.01f);
+			paths = paths.SimplifyPaths(0.01f);
 			Console.WriteLine("Reordering paths");
-			paths = SvgHelper.ReorderPaths(paths);
+			paths = paths.ReorderPaths();
 
 			var blackPaths = paths;
 			paths = new();
 
 			for(var i = -n / 2; i <= n / 2; ++i) {
-				DrawLine(new Vector2(-scale, scale / n * 2 * i), new Vector2(scale, scale / n * 2 * i));
-				DrawLine(new Vector2(scale / n * 2 * i, -scale), new Vector2(scale / n * 2 * i, scale));
+				DrawLine(new(-scale, scale / n * 2 * i), new(scale, scale / n * 2 * i));
+				DrawLine(new(scale / n * 2 * i, -scale), new(scale / n * 2 * i, scale));
 			}
 
 			Console.WriteLine("Reordering paths");
-			paths = SvgHelper.ReorderPaths(paths);
+			paths = paths.ReorderPaths();
 
 			SvgHelper.Output("test.svg",
-				paths.Select(x => ("green", x)).Concat(blackPaths.Select(x => ("black", x))).ToList(), new Page());
+				paths.Select(x => ("green", x)).Concat(blackPaths.Select(x => ("black", x))).ToList(), new());
 		}
 
 		static void HeartLimitMain(string[] args) {
 			var paths = new List<List<Vector2>>();
-			var heart = SvgHelper.PathsFromSvg("../Animatrix/heart-outline.svg").Select(x => x.Points).ToList();
-			heart = SvgHelper.Fit(heart, Vector2.One);
+			var heart = SvgParser.Load("../Animatrix/heart-outline.svg").Select(x => x.Path).ToList();
+			heart = heart.Fit(Vector2.One);
 			heart = heart.Select(path => path.Select(x => new Vector2(x.X - .5f, x.Y - .5f)).ToList()).ToList();
 
 			Vector2 P(Vector2 p) {
@@ -165,22 +178,280 @@ namespace Fractaler {
 			var bound = 18;
 			for(var x = -bound; x <= bound; ++x)
 				for(var y = -bound; y <= bound; ++y)
-					paths.AddRange(heart.Select(path => path.Select(p => P(R(new Vector2(x + .5f, y + .5f), p))).ToList()));
+					paths.AddRange(heart.Select(path => path.Select(p => P(R(new(x + .5f, y + .5f), p))).ToList()));
 			/*for(var i = -bound; i <= bound; ++i) {
 				DrawLine(new Vector2(i - offset, -100), new Vector2(i - offset, 100));
 				DrawLine(new Vector2(-100, i - offset), new Vector2(100, i - offset));
 			}*/
 			
-			SvgHelper.Output("test.svg", paths.Select(x => ("black", x)).ToList(), new Page());
+			SvgHelper.Output("test.svg", paths.Select(x => ("black", x)).ToList(), new());
 		}
-		
-		static void MainCarpet(string[] args) {
-			var heart = SvgHelper.PathsFromSvg("../Animatrix/heart-outline.svg").Select(x => x.Points).ToList();
-			heart = SvgHelper.Fit(heart, Vector2.One);
+
+		static float[] PentagonAngles(bool offset = false) {
+			var angles = new float[5];
+			var step = MathF.Tau / 5;
+			for(var i = 0; i < 5; ++i)
+				angles[i] = step * i + (offset ? step / 2 : 0);
+			return angles;
+		}
+
+		static Vector2[] PentagonPoints(float radius, bool offset = false) {
+			var p = new Vector2(0, -radius);
+			return PentagonAngles(offset).Select(a => p.Rotate(a)).ToArray();
+		}
+
+		static IEnumerable<Vector2> Arc(float radius, float a, float b, int steps = 100, bool around = false) {
+			var p = new Vector2(0, -radius);
+			if(around)
+				a += MathF.Tau;
+			for(var i = 0; i < steps; ++i)
+				yield return p.Rotate(Mix(a, b, i / (float) (steps - 1)));
+		}
+
+		static IEnumerable<Vector2> ArcI(float radiusA, float radiusB, float a, float b, int steps = 100, bool around = false) {
+			if(around)
+				a += MathF.Tau;
+			for(var i = 0; i < steps; ++i)
+				yield return new Vector2(0, -Mix(radiusA, radiusB, i / (float) (steps - 1))).Rotate(Mix(a, b, i / (float) (steps - 1)));
+		}
+
+		static List<Vector2> SeraSigil(float radius) {
+			var points = PentagonPoints(radius);
+			var angles = PentagonAngles();
+			var path = new List<Vector2>();
+			path.Add(points[3]);
+			path.Add(points[0]);
+			path.Add(points[2]);
+			path.Add(points[4]);
+			path.Add(points[1]);
+			path.AddRange(Arc(radius, angles[1], angles[3], around: true));
+			return path;
+		}
+
+		static List<Vector2> SzSigil(float radius) {
+			var points = PentagonPoints(radius);
+			var iradius = radius * 0.55f;
+			var oradius = radius * 1.2f;
+			var ipoints = PentagonPoints(iradius, offset: true);
+			var angles = PentagonAngles();
+			var iangles = PentagonAngles(offset: true);
+			var path = new List<Vector2>();
+			path.Add(new Vector2(0, -Mix(iradius, radius, 0.75f)).Rotate(Mix(iangles[1], angles[2], 0.75f)));
+			for(var i = 5 + 1; i > 1; --i) {
+				path.Add(ipoints[i % 5]);
+				path.Add(points[i % 5]);
+			}
+			path.AddRange(ArcI(radius, oradius, angles[2], angles[4], around: true));
+			return SvgHelper.Fit(new() { path }, Vector2.One * 2)[0];
+		}
+
+		static float Clamp(float v, float min, float max) => MathF.Min(MathF.Max(v, min), max);
+
+		static void HeadbondhoodMain(string[] args) {
+			var zsigil = SzSigil(1);
+			var ssigil = SeraSigil(1);
+			var paths = new List<(string Color, List<Vector2> path)>();
+			var rng = new Random(570891);
+
+			float Gaussian(float mean = 0, float stdDev = 0) {
+				var u1 = 1 - rng.NextSingle();
+				var u2 = 1 - rng.NextSingle();
+				var rsn = MathF.Sqrt(-2 * MathF.Log(u1)) * MathF.Sin(MathF.Tau * u2);
+				return mean + stdDev * rsn;
+			}
+
+			bool Overlapping(float ra, Vector2 pa, float rb, Vector2 pb) =>
+				Vector2.Distance(pa, pb) <= ra + rb;
+
+			var noise = new FastNoise();
+			noise.UsedNoiseType = FastNoise.NoiseType.Perlin;
+
+			var width = 1000;
+			var height = 1000;
+			var placed = new List<(float Radius, Vector2 Position)>();
+			for(var i = 0; i < 100; ++i) {
+				var offset = new Vector2(rng.NextSingle() * (width * 0.9f) + (width * 0.05f), MathF.Abs(Gaussian(0f, 0.075f)) * height);
+				var scale = Gaussian(7, 3) * 2;
+				if(placed.Any(x => Overlapping(x.Radius, x.Position, scale * 2, offset))) {
+					i--;
+					continue;
+				}
+				placed.Add((scale * 2, offset));
+				var sigil = rng.NextSingle() > 0.5f ? zsigil : ssigil;
+				var rot = rng.NextSingle() * MathF.Tau;
+				paths.Add(("silver", sigil.Select(p => p.Rotate(rot) * scale + offset).ToList()));
+			}
+
+			for(var i = 0; i < 500; ++i) {
+				var offset = new Vector2(rng.NextSingle() * (width * 0.9f) + (width * 0.05f), MathF.Abs(Gaussian(0f, 0.075f)) * height);
+				var scale = noise.GetNoise(offset.X, offset.Y) * 15;
+				if(scale < 1 || placed.Any(x => Overlapping(x.Radius, x.Position, scale * 2, offset))) {
+					i--;
+					continue;
+				}
+				placed.Add((scale * 2, offset));
+				paths.Add(("silver", Circle(scale, offset)));
+			}
+
+			var end = width * 0.8f;
+			var soffset = 25;
+			for(var j = 0; j < 5; ++j) {
+				var spath = new List<Vector2>();
+				var zpath = new List<Vector2>();
+
+				for(var i = 0; i < 1000; ++i) {
+					var m = i / 999f;
+					var h = height * 0.4f + noise.GetNoise(m * 200, j * 50) * 75 + j * 2 + -MathF.Sin(m * MathF.PI) * 50;
+					var swap = Mix(1, MathF.Cos(m * 50), MathF.Pow(m, 2));
+					spath.Add(new(m * end, h - soffset * swap));
+					zpath.Add(new(m * end, h + soffset * swap));
+				}
+
+				paths.Add(("purple", spath));
+				paths.Add(("green", zpath));
+			}
+
+			var fscale = 30;
+			paths.Add(("purple", ssigil.Select(x => x.Rotate(MathF.PI / 3) * fscale + new Vector2(end + 20, height * 0.4f - soffset)).ToList()));
+			paths.Add(("green", zsigil.Select(x => x.Rotate(MathF.PI / 3) * fscale + new Vector2(end + 40, height * 0.4f - 10f)).ToList()));
+			
+			for(var i = 0; i < 210; ++i) {
+				var waterPath = new List<Vector2>();
+				for(var x = 0; x < width; ++x)
+					waterPath.Add(new(x, noise.GetNoise(x, i * 10) * 50 + height * 0.5f + i * 2.5f));
+				paths.Add(("blue", waterPath));
+			}
+
+			paths = paths.Select(x => (x.Color, x.path.SimplifyPath(0.5f))).ToList();
+			
+			paths.Add(("yellow", new() {
+				Vector2.Zero,
+				new(width, 0),
+				new(width, height),
+				new(0, height),
+				Vector2.Zero
+			}));
+
+			paths = paths.GroupBy(x => x.Color)
+				.Select(x => x.Select(y => y.path).ToList().ReorderPaths().Select(y => (x.Key, y)))
+				.SelectMany(x => x)
+				.ToList();
+
+			SvgHelper.Output("test.svg", paths, new());
+		}
+
+		static void GayCarpetMain(string[] args) {
+			//var heart = SvgHelper.PathsFromSvg("../Animatrix/heart-outline.svg").Select(x => x.Points).ToList();
+			var heart = TextHelper.Render("Gay", "SLF Cue the Music", 20);
+			//SvgHelper.Output("test.svg", heart.Select(x => ("black", x)).ToList(), new Page());
+			heart = heart.Fit(Vector2.One);
 			var paths = Carpet(Vector2.Zero, 0)
 				.Select(x => heart.Select(path => ("black", path.Select(p => (p - new Vector2(.5f)) * x.S + x.P).ToList())))
-				.SelectMany(x => x).ToList();
-			SvgHelper.Output("test.svg", paths, new Page());
+				.SelectMany(x => x)
+				.Select(x => (x.Item1, x.Item2.SimplifyPath(0.05f)))
+				.ToList();
+			SvgHelper.Output("test.svg", paths, new());
+		}
+		
+		static List<List<Vector2>> WarpOrthographic(List<List<Vector2>> paths, Func<Vector2, Vector3> func) =>
+			WarpOrthographic(paths, (Vector3 p) => func(new(p.X, p.Y)));
+
+		static List<List<Vector2>> WarpOrthographic(List<List<Vector2>> paths,
+			Func<Vector3, Vector3> func
+		) =>
+			paths.Select(path =>
+				path.Select(p => func(new(p, 0)).XY()).ToList()).ToList();
+
+		static Vector3 RotateX(Vector3 p, float a) {
+			var r = new Vector2(p.Y, p.Z).Rotate(a);
+			return new Vector3(p.X, r.X, r.Y);
+		}
+
+		static Vector3 RotateY(Vector3 p, float a) {
+			var r = new Vector2(p.X, p.Z).Rotate(a);
+			return new Vector3(r.X, p.Y, r.Y);
+		}
+
+		static Vector3 RotateZ(Vector3 p, float a) {
+			var r = p.XY().Rotate(a);
+			return new Vector3(r, p.Z);
+		}
+
+		static List<List<Vector2>> RotateXOrthographic(List<List<Vector2>> paths, float anglePerX) =>
+			WarpOrthographic(paths, p => RotateX(new Vector3(p, 0), anglePerX * p.X));
+
+		static void SuchGreatHeightsMain() {
+			var paths = new List<(string Color, List<Vector2> Path)>();
+
+			var mountainHeight = 1000;
+			var mountainBaseWidth = 600;
+			var mountainTopWidth = 300;
+			var mountainBaseY = 0;
+			var mountainSides = new List<(Vector2 Left, Vector2 Right)>();
+			var roughness = 10f;
+			
+			Thread.Sleep(5000);
+
+			var noise = new FastNoise();
+			noise.UsedNoiseType = FastNoise.NoiseType.Perlin;
+			//noise.Frequency = 10;
+
+			for(var i = 0; i < mountainHeight; ++i) {
+				var t = i / (float) (mountainHeight - 1);
+				var halfWidth = Mix(mountainBaseWidth, mountainTopWidth, t) / 2;
+				var y = i + mountainBaseY;
+				var leftOffset = (noise.GetNoise(-halfWidth, y * 10, 0) + 1) * roughness;
+				var rightOffset = (noise.GetNoise(halfWidth, y * 10, 0) + 1) * roughness;
+				mountainSides.Add((new(-halfWidth - leftOffset, y), new(halfWidth + rightOffset, y)));
+			}
+			
+			paths.Add(("black", mountainSides.Select(x => x.Left).ToList()));
+			paths.Add(("black", mountainSides.Select(x => x.Right).ToList()));
+			
+			SvgHelper.Output("test.svg", paths.Apply(x => x with { Y = -x.Y }), new());
+		}
+
+		static void BubbleTextMain(string[] args) {
+			var text = TextHelper.Render("Gay", "SLF-OPF Cue the Music", 20);
+			text = text.MakeUniformDistances();
+			var paths = new List<List<Vector2>>();
+			var rng = new Random(1337);
+			foreach(var path in text) {
+				var len = (int) (path.CalcDrawDistance() * 5);
+				for(var i = 0; i < len; ++i)
+					paths.Add(Circle(rng.NextSingle() / 5 + 0.2f, path[rng.Next(path.Count)], 25));
+			}
+			SvgHelper.Output("test.svg", paths, new());
+		}
+
+		static void Main(string[] args) {
+			Visualizer.Run(() => {
+				var paths = TextHelper.Render("Little One", "SLF-OPF Cue the Music", 20);
+				Console.WriteLine("Rendered text");
+				Visualizer.DrawPaths(paths);
+				var heart = SvgParser.Load("../Animatrix/heart-outline.svg").Select(x => x.Path).ToList();
+				heart = heart.Fit(Vector2.One / 2);
+				heart = heart.Apply(p => p - Vector2.One / 4);
+				//text = SvgHelper.MakeUniformDistances(text);
+				paths = paths.Subdivide(10);
+				paths = paths.Fit(Vector2.One);
+				//paths = Apply(paths, p => p * 2 - Vector2.One);
+				paths = paths.Apply(p => p.Rotate(MathF.Tau / 360 * 90));
+				paths = paths.Apply(p => p.Rotate(-p.Length()));
+				paths = paths.SimplifyPaths(0.001f);
+				paths = paths
+					.Concat(paths.Apply(p => p.Rotate(MathF.Tau / 6)))
+					.Concat(paths.Apply(p => p.Rotate(MathF.Tau / 6 * 2)))
+					.Concat(paths.Apply(p => p.Rotate(MathF.Tau / 6 * 3)))
+					.Concat(paths.Apply(p => p.Rotate(MathF.Tau / 6 * 4)))
+					.Concat(paths.Apply(p => p.Rotate(MathF.Tau / 6 * 5)))
+					.Concat(heart)
+					.ToList();
+				Visualizer.Clear();
+				Visualizer.DrawPaths(paths);
+				SvgHelper.Output("test.svg", paths, new());
+				Visualizer.WaitForInput();
+			});
 		}
 
 		static IEnumerable<(Vector2 P, float S)> Carpet(Vector2 origin, int level) {

@@ -5,14 +5,39 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Xml;
-using PrettyPrinter;
 using SvgNet;
-using SvgNet.SvgElements;
-using SvgNet.SvgTypes;
+using SvgNet.Elements;
+using SvgNet.Types;
 
 namespace Common {
 	public static class SvgHelper {
-		public static List<List<Vector2>> SegmentsToPaths(List<(Vector2, Vector2)> lines) {
+		public static List<List<Vector2>> Apply(this List<List<Vector2>> paths, Func<Vector2, Vector2> func) =>
+			paths.Select(path => path.Select(func).ToList()).ToList();
+		public static List<List<Vector3>> Apply(this List<List<Vector2>> paths, Func<Vector2, Vector3> func) =>
+			paths.Select(path => path.Select(func).ToList()).ToList();
+		public static List<List<Vector2>> Apply(this List<List<Vector3>> paths, Func<Vector3, Vector2> func) =>
+			paths.Select(path => path.Select(func).ToList()).ToList();
+		public static List<(string Color, List<Vector2> Path)> Apply(this List<(string Color, List<Vector2> Path)> paths, Func<Vector2, Vector2> func) =>
+			paths.Select(path => (path.Color, path.Path.Select(func).ToList())).ToList();
+		public static List<Vector2> Apply(this List<Vector2> path, Func<Vector2, Vector2> func) =>
+			path.Select(func).ToList();
+
+		public static List<Vector2> Transform(this List<Vector2> path, Matrix4x4 transform) =>
+			path.Apply(p => Vector2.Transform(p, transform));
+
+		public static List<List<Vector2>> Transform(this List<List<Vector2>> paths, Matrix4x4 transform) =>
+			paths.Apply(p => Vector2.Transform(p, transform));
+
+		public static List<(string Color, List<Vector2> Path)> ByColor(
+			this List<(string Color, List<Vector2> Path)> paths,
+			Func<List<List<Vector2>>, IEnumerable<IEnumerable<Vector2>>> func
+		) =>
+			paths.GroupBy(x => x.Color)
+				.Select(x => func(x.Select(y => y.Path).ToList()).Select(y => (x.Key, y.ToList())))
+				.SelectMany(x => x)
+				.ToList();
+
+		public static List<List<Vector2>> SegmentsToPaths(this List<(Vector2, Vector2)> lines) {
 			var paths = new List<List<Vector2>>();
 			var mp = new Dictionary<Vector2, List<Vector2>>();
 			foreach(var (a, b) in lines) {
@@ -42,7 +67,7 @@ namespace Common {
 			return paths;
 		}
 		
-		public static List<List<Vector2>> ReorderPaths(List<List<Vector2>> paths) {
+		public static List<List<Vector2>> ReorderPaths(this List<List<Vector2>> paths) {
 			if(paths.Count <= 1) return paths;
 			var last = paths[0].Last();
 			var npaths = new List<List<Vector2>> { paths[0] };
@@ -73,9 +98,9 @@ namespace Common {
 			return npaths;
 		}
 
-		static List<Vector2> SimplifyPath(List<Vector2> path, float minAreaRatio) {
+		public static List<Vector2> SimplifyPath(this List<Vector2> path, float minAreaRatio) {
 			if(path.Count < 3) return path;
-
+			
 			var tris = new List<Triangle2D>();
 			for(var i = 0; i < path.Count - 2; ++i) {
 				var (a, b, c) = (path[i], path[i + 1], path[i + 2]);
@@ -112,13 +137,50 @@ namespace Common {
 			return npoints;
 		}
 
-		public static List<List<Vector2>> ScalePaths(List<List<Vector2>> paths, float scale) =>
+		public static List<List<Vector2>> MakeUniformDistances(this List<List<Vector2>> paths) {
+			var minDist = paths.Select(x =>
+					x.SkipLast(1).Zip(x.Skip(1)).Select(y => (y.First - y.Second).Length()).Min())
+				.Min();
+			return paths.Select(path =>
+				path.SkipLast(1).Zip(path.Skip(1)).Select(x => {
+					var (a, b) = (x.First, x.Second);
+					var dist = (a - b).Length();
+					var chunks = (int) MathF.Round(dist / minDist);
+					var points = new List<Vector2>();
+					var step = (b - a) / chunks;
+					for(var i = 0; i < chunks; ++i)
+						points.Add(a + step * i);
+					return points;
+				}).SelectMany(x => x).Append(path.Last()).ToList()).ToList();
+		}
+
+		public static List<List<Vector2>> Subdivide(this List<List<Vector2>> paths, int count) => 
+			paths.Select(path =>
+				path.SkipLast(1).Zip(path.Skip(1)).Select(x => {
+					var (a, b) = (x.First, x.Second);
+					var dist = (a - b).Length();
+					var points = new List<Vector2>();
+					var step = (b - a) / count;
+					for(var i = 0; i < count; ++i)
+						points.Add(a + step * i);
+					return points;
+				}).SelectMany(x => x).Append(path.Last()).ToList()).ToList();
+
+		public static List<List<Vector2>> RemoveOverlaps(this List<List<Vector2>> paths) {
+			var quadtree = new QuadTree(paths);
+			quadtree.RemoveOverlaps();
+			return quadtree.GetPaths();
+		}
+		
+		public static List<List<Vector2>> ScalePaths(this List<List<Vector2>> paths, float scale) =>
 			paths.Select(path => path.Select(p => p * scale).ToList()).ToList();
 		
-		public static List<List<Vector2>> SimplifyPaths(List<List<Vector2>> paths, float minAreaRatio) =>
-			paths.AsParallel().Select(x => SimplifyPath(x, minAreaRatio)).ToList();
+		public static List<List<Vector2>> SimplifyPaths(this List<List<Vector2>> paths, float minAreaRatio) =>
+			paths
+				//.AsParallel()
+				.Select(x => SimplifyPath(x, minAreaRatio)).ToList();
 		
-		public static List<List<Vector2>> JoinPaths(List<List<Vector2>> paths, float minDist = 100) {
+		public static List<List<Vector2>> JoinPaths(this List<List<Vector2>> paths, float minDist = 100) {
 			if(paths.Count < 2) return paths;
 			var last = paths[0].Last();
 			var npaths = new List<List<Vector2>> { paths[0] };
@@ -133,12 +195,12 @@ namespace Common {
 			return npaths;
 		}
 
-		public static List<List<Vector2>> TriviallyJoinPaths(List<List<Vector2>> paths) {
+		public static List<List<Vector2>> TriviallyJoinPaths(this List<List<Vector2>> paths) {
 			var mp = new Dictionary<Vector2, List<Vector2>>();
 
 			foreach(var path in paths) {
 				var start = path[0];
-				var end = path[path.Count - 1];
+				var end = path[^1];
 				if(mp.ContainsKey(start)) {
 					var cpath = mp[start];
 					var cstart = cpath[0];
@@ -178,7 +240,7 @@ namespace Common {
 			return npaths;
 		}
 
-		public static (Vector2 Lower, Vector2 Upper) GetBounds(List<List<Vector2>> paths) {
+		public static (Vector2 Lower, Vector2 Upper) GetBounds(this List<List<Vector2>> paths) {
 			var minX = float.PositiveInfinity;
 			var minY = float.PositiveInfinity;
 			var maxX = float.NegativeInfinity;
@@ -194,11 +256,12 @@ namespace Common {
 			return (new(minX, minY), new(maxX, maxY));
 		}
 
-		public static float CalcDrawDistance(List<List<Vector2>> paths) =>
-			paths.Select(path => path.SkipLast(1).Zip(path.Skip(1))
-				.Select(x => (x.Second - x.First).Length()).Sum()).Sum();
+		public static float CalcDrawDistance(this List<List<Vector2>> paths) =>
+			paths.Select(CalcDrawDistance).Sum();
+		public static float CalcDrawDistance(this List<Vector2> path) =>
+			path.SkipLast(1).Zip(path.Skip(1)).Select(x => (x.Second - x.First).Length()).Sum();
 
-		public static List<List<Vector2>> Fit(List<List<Vector2>> paths, Vector2 size) {
+		public static List<List<Vector2>> Fit(this List<List<Vector2>> paths, Vector2 size) {
 			var (offset, ub) = GetBounds(paths);
 
 			var osize = ub - offset;
@@ -214,7 +277,7 @@ namespace Common {
 			return paths.Select(path => path.Select(x => (x - offset) * scale + push).ToList()).ToList();
 		}
 
-		public static List<(string Color, List<Vector2> Points)> PathsFromSvg(string fn) {
+		public static List<(string Color, List<Vector2> Points)> OldPathsFromSvg(string fn) {
 			var xml = new XmlDocument();
 			xml.LoadXml(File.ReadAllText(fn));
 			var svg = SvgFactory.LoadFromXML(xml, null);
@@ -314,6 +377,9 @@ namespace Common {
 		}
 		
 		static Matrix4x4 ConvTransform(Matrix m) => Matrix4x4.Identity;
+
+		public static void Output(string fn, List<List<Vector2>> paths, Page page, bool addBounds = false) =>
+			Output(fn, paths.Select(x => ("black", x)).ToList(), page, addBounds);
 		
 		public static void Output(string fn, List<(string Color, List<Vector2> Points)> paths, Page page, bool addBounds = false) {
 			float lowX = 100000f, lowY = 100000f;

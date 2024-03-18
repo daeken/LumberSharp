@@ -3,6 +3,8 @@ using System.Linq;
 using OpenTK;
 using OpenTK.Graphics;
 using OpenTK.Graphics.OpenGL4;
+using OpenTK.Windowing.Common;
+using OpenTK.Windowing.Desktop;
 using PrettyPrinter;
 using Vector2 = System.Numerics.Vector2;
 using Vector3 = System.Numerics.Vector3;
@@ -14,15 +16,17 @@ namespace Lightness.Renderer {
 		
 		public event Action<Pixel[]> Rendered;
 		
-		public Renderer(Scene scene, (int Width, int Height) size) : base(
-			100, 100, GraphicsMode.Default, "Lightness",
-			GameWindowFlags.Default, DisplayDevice.Default, 4, 1, GraphicsContextFlags.ForwardCompatible
-		) {
+		public Renderer(Scene scene, (int Width, int Height) size) : base(GameWindowSettings.Default, new() {
+			ClientSize = new(200, 200),
+			Title = "Lightness",
+			Flags = ContextFlags.ForwardCompatible,
+			APIVersion = Version.Parse("4.1")
+		}) {
 			Scene = scene;
 			Size = size;
 		}
 
-		protected override void OnLoad(EventArgs e) {
+		protected override void OnLoad() {
 			WindowState = WindowState.Minimized;
 			
 			var fbo = new FrameBuffer(Size.Width, Size.Height, FrameBufferAttachment.Xyzw, FrameBufferAttachment.Depth);

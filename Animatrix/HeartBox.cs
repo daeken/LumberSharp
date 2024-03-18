@@ -9,7 +9,7 @@ namespace Animatrix {
 	public class HeartBox : IAnimation {
 		public Vector2 Dimensions => new(1000, 1000);
 		public List<List<(string, List<Vector2>)>> GenerateFrames() {
-			var heart = SvgHelper.PathsFromSvg("heart-outline.svg").Select(x => x.Points).ToList();
+			var heart = SvgParser.Load("heart-outline.svg").Select(x => x.Path).ToList();
 			heart = SvgHelper.Fit(heart, Vector2.One);
 			
 			var projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.Tau / 3, 1, 1f, 1000f);

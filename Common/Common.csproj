@@ -1,13 +1,18 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>net5.0</TargetFramework>
+        <TargetFramework>net7.0</TargetFramework>
         <LangVersion>latest</LangVersion>
     </PropertyGroup>
 
     <ItemGroup>
+      <PackageReference Include="CairoSharp" Version="3.24.24.95" />
+      <PackageReference Include="Curiosity.runtime.osx.10.10-arm64.CoreCompat.System.Drawing" Version="6.0.5.4" />
+      <PackageReference Include="DoubleSharp" Version="0.0.1" />
+      <PackageReference Include="ppy.SDL2-CS" Version="1.0.693-alpha" />
       <PackageReference Include="PrettyPrinter" Version="1.0.0" />
-      <PackageReference Include="SvgNet" Version="2.1.6" />
+      <PackageReference Include="runtime.osx.10.10-x64.CoreCompat.System.Drawing" Version="6.0.5.128" />
+      <PackageReference Include="SvgNet" Version="3.3.6" />
     </ItemGroup>
 
 </Project>

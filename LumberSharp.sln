@@ -24,6 +24,12 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TriContour", "TriContour\Tr
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Demarkate", "Demarkate\Demarkate.csproj", "{C072A251-44FD-4B1A-B8C4-A11F4AE10C9C}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VisTest", "VisTest\VisTest.csproj", "{442DB8D0-C5B5-45EF-9FB5-2C3D82FB293D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SdfLib", "SdfLib\SdfLib.csproj", "{AA45B2FA-446B-466C-B13F-EBD25C49ACE0}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MarchContour", "MarchContour\MarchContour.csproj", "{4653C84C-A9A4-4A34-98B9-8664C702835E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -78,5 +84,17 @@ Global
 		{C072A251-44FD-4B1A-B8C4-A11F4AE10C9C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C072A251-44FD-4B1A-B8C4-A11F4AE10C9C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C072A251-44FD-4B1A-B8C4-A11F4AE10C9C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{442DB8D0-C5B5-45EF-9FB5-2C3D82FB293D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{442DB8D0-C5B5-45EF-9FB5-2C3D82FB293D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{442DB8D0-C5B5-45EF-9FB5-2C3D82FB293D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{442DB8D0-C5B5-45EF-9FB5-2C3D82FB293D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AA45B2FA-446B-466C-B13F-EBD25C49ACE0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AA45B2FA-446B-466C-B13F-EBD25C49ACE0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AA45B2FA-446B-466C-B13F-EBD25C49ACE0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AA45B2FA-446B-466C-B13F-EBD25C49ACE0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4653C84C-A9A4-4A34-98B9-8664C702835E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4653C84C-A9A4-4A34-98B9-8664C702835E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4653C84C-A9A4-4A34-98B9-8664C702835E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4653C84C-A9A4-4A34-98B9-8664C702835E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

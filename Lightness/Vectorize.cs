@@ -26,14 +26,13 @@ namespace Lightness {
 			RemoveNonEdges();
 			FloodFill();
 			RemoveNoise();
-			var paths = Trace();
-			paths = TriviallyJoinPaths(paths);
-			paths = SimplifyPaths(paths, 5);
-			paths = ReorderPaths(paths);
-			paths = JoinPaths(paths);
-			paths = SimplifyPaths(paths, 5);
-			paths = ReorderPaths(paths);
-			FinalPaths = paths;
+			FinalPaths = Trace()
+				.TriviallyJoinPaths()
+				.SimplifyPaths(5)
+				.ReorderPaths()
+				.JoinPaths()
+				.SimplifyPaths(5)
+				.ReorderPaths();
 		}
 
 		public void Output(string fn, Page page) =>
@@ -146,7 +145,7 @@ namespace Lightness {
 					queue.Enqueue(((nx, ny), (x, y)));
 			}
 			
-			return SegmentsToPaths(lines);
+			return lines.SegmentsToPaths();
 		}
 
 		List<List<Vector2>> Trace() {

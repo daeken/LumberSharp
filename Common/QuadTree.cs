@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Numerics;
+using DoubleSharp.Linq;
 using static Common.Helpers;
 
 namespace Common {
@@ -16,12 +17,12 @@ namespace Common {
 
 		public QuadTree(List<List<Vector2>> paths, int maxSegmentsPerNode = 50) : this(
 			paths.Select(path => path.SkipLast(1).Zip(path.Skip(1)).Select(OrderSegment)).SelectMany(x => x).ToList(),
-			SvgHelper.GetBounds(paths), maxSegmentsPerNode) {}
+			paths.GetBounds(), maxSegmentsPerNode) {}
 
 		public QuadTree(List<(Vector2 A, Vector2 B)> segments, (Vector2 Lower, Vector2 Upper) bounds, int maxSegmentsPerNode) {
 			MaxSegmentsPerNode = maxSegmentsPerNode;
 			if(segments.Count <= MaxSegmentsPerNode) {
-				Segments = CleanSegments(segments);
+				Segments = segments;
 				return;
 			}
 
@@ -41,17 +42,6 @@ namespace Common {
 			}).ToArray();
 		}
 
-		List<(Vector2 A, Vector2 B)> CleanSegments(List<(Vector2 A, Vector2 B)> segments) {
-			return segments.Select(OrderSegment).GroupBy(v => MathF.Round((v.B - v.A).Apply(MathF.Atan2), 1)).Select(
-				segs => {
-					var points = segs.Select(v => new[] { v.A, v.B }).SelectMany(x => x).OrderBy(v => v.X)
-						.ThenBy(v => v.Y).ToList();
-					var (first, second, tlen) = points.Select(a => points.Select(b => (a, b, (b - a).Length()))).SelectMany(x => x)
-						.OrderByDescending(x => x.Item3).First();
-					return OrderSegment((first, second));
-				}).ToList();
-		}
-		
 		[Flags]
 		enum OutCode {
 			Inside = 0, 
@@ -123,11 +113,60 @@ namespace Common {
 
 			if(paths.Count == 0) return paths;
 
-			paths = SvgHelper.ReorderPaths(paths);
-			paths = SvgHelper.TriviallyJoinPaths(paths);
-			paths = SvgHelper.ReorderPaths(paths);
-			
-			return paths;
+			return paths.ReorderPaths()
+				.TriviallyJoinPaths()
+				.ReorderPaths();
+		}
+
+		public void RemoveOverlaps() {
+			if(Segments == null) {
+				Children.ForEach(x => x.RemoveOverlaps());
+				return;
+			}
+
+			var nsegments = new List<(Vector2 A, Vector2 B)>();
+			foreach(var segment in Segments) {
+				var didOverlap = false;
+				for(var i = 0; i < nsegments.Count; ++i) {
+					var nseg = nsegments[i];
+					if((nseg.A == segment.A && nseg.B == segment.B) ||
+					   (nseg.A == segment.B && nseg.B == segment.A)) {
+						didOverlap = true;
+						break;
+					}
+					if(DetermineOverlap(segment, nseg)) {
+						nsegments[i] = CombineSegments(segment, nseg);
+						didOverlap = true;
+						break;
+					}
+				}
+				if(didOverlap) continue;
+				nsegments.Add(segment);
+			}
+			Segments = nsegments;
+		}
+
+		static bool IsCollinear(Vector2 a, Vector2 b, Vector2 c) =>
+			MathF.Abs((b.Y - a.Y) * (c.X - b.X) - (b.X - a.X) * (c.Y - b.Y)) < 0.0001f;
+
+		static bool OnSegment(Vector2 p, Vector2 q, Vector2 r) =>
+			q.X <= MathF.Max(p.X, r.X) && q.X >= MathF.Min(p.X, r.X) &&
+			q.Y <= MathF.Max(p.Y, r.Y) && q.Y >= MathF.Min(p.Y, r.Y);
+
+		static bool DetermineOverlap(
+			(Vector2 Start, Vector2 End) a, 
+			(Vector2 Start, Vector2 End) b
+		) =>
+			IsCollinear(a.Start, a.End, b.Start) && IsCollinear(a.Start, a.End, b.End) &&
+			(OnSegment(a.Start, b.Start, a.End) || OnSegment(a.Start, b.End, a.End));
+
+		static (Vector2 Start, Vector2 End) CombineSegments(
+			(Vector2 Start, Vector2 End) a,
+			(Vector2 Start, Vector2 End) b
+		) {
+			var points = new List<Vector2> { a.Start, a.End, b.Start, b.End };
+			points.Sort((v1, v2) => v1.X == v2.X ? v1.Y.CompareTo(v2.Y) : v1.X.CompareTo(v2.X));
+			return (points[0], points[3]);
 		}
 	}
 }
