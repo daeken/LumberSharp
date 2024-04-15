@@ -8,7 +8,7 @@
     <ItemGroup>
       <PackageReference Include="morelinq" Version="3.3.2" />
       <PackageReference Include="PrettyPrinter" Version="1.0.0" />
-      <PackageReference Include="SixLabors.ImageSharp" Version="1.0.3" />
+      <PackageReference Include="SixLabors.ImageSharp" Version="2.1.8" />
     </ItemGroup>
 
     <ItemGroup>
