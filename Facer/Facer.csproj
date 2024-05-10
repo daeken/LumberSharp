@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net8.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>disable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Common\Common.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Remove="Sapphos_Head.stl" />
+      <None Remove="AhsokaTano_high.stl" />
+      <None Remove="AhsokaTano_low.stl" />
+      <None Remove="test.stl" />
+      <None Remove="test.svg" />
+    </ItemGroup>
+
+</Project>
