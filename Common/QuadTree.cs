@@ -106,16 +106,19 @@ namespace Common {
 			return segment;
 		}
 
-		public List<List<Vector2>> GetPaths() {
+		public List<List<Vector2>> GetPaths(float? minDist = null) {
 			var paths = Segments != null
 				? Segments.Select(x => new List<Vector2> { x.A, x.B }).ToList()
-				: Children.Select(x => x.GetPaths()).SelectMany(x => x).ToList();
+				: Children.Select(x => x.GetPaths(minDist)).SelectMany(x => x).ToList();
 
 			if(paths.Count == 0) return paths;
 
-			return paths.ReorderPaths()
+			paths = paths.ReorderPaths()
 				.TriviallyJoinPaths()
 				.ReorderPaths();
+			if(minDist != null)
+				paths = paths.JoinPaths(minDist.Value);
+			return paths;
 		}
 
 		public void RemoveOverlaps() {
@@ -147,7 +150,7 @@ namespace Common {
 		}
 
 		static bool IsCollinear(Vector2 a, Vector2 b, Vector2 c) =>
-			MathF.Abs((b.Y - a.Y) * (c.X - b.X) - (b.X - a.X) * (c.Y - b.Y)) < 0.0001f;
+			MathF.Abs((b.Y - a.Y) * (c.X - b.X) - (b.X - a.X) * (c.Y - b.Y)) < 0.00001f;
 
 		static bool OnSegment(Vector2 p, Vector2 q, Vector2 r) =>
 			q.X <= MathF.Max(p.X, r.X) && q.X >= MathF.Min(p.X, r.X) &&

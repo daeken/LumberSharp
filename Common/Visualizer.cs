@@ -153,6 +153,7 @@ public class Visualizer : IDisposable {
 			"yellow" => (255, 255, 0),
 			"cyan" => (0, 255, 255),
 			"purple" => (255, 0, 255),
+			"pink" => (255, 200, 200),
 			{} x when x[0] == '#' && x.Length == 4 => (
 				byte.Parse(x[1] + x[1].ToString(), NumberStyles.HexNumber),
 				byte.Parse(x[2] + x[2].ToString(), NumberStyles.HexNumber),

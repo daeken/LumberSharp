@@ -98,26 +98,95 @@ namespace Common {
 			return npaths;
 		}
 
-		public static List<Vector2> SimplifyPath(this List<Vector2> path, float minAreaRatio) {
+		public static List<Vector2> SimplifyRDP(List<Vector2> points, float epsilon) {
+			if(points.Count < 3)
+				return points;
+
+			var index = -1;
+			var maxDistance = 0.0;
+
+			for(var i = 1; i < points.Count - 1; i++) {
+				var distance = PerpendicularDistance(points[i], points[0], points[^1]);
+				if(distance > maxDistance) {
+					index = i;
+					maxDistance = distance;
+				}
+			}
+
+			if(maxDistance > epsilon) {
+				var l1 = SimplifyRDP(points.GetRange(0, index + 1), epsilon);
+				var l2 = SimplifyRDP(points.GetRange(index, points.Count - index), epsilon);
+
+				l1.RemoveAt(l1.Count - 1);
+				l1.AddRange(l2);
+				return l1;
+			}
+			return [points[0], points[^1]];
+		}
+
+		static float PerpendicularDistance(Vector2 point, Vector2 lineStart, Vector2 lineEnd) {
+			var area = MathF.Abs(0.5f * (lineStart.X * lineEnd.Y + lineEnd.X * point.Y +
+			                           point.X * lineStart.Y
+			                           - lineEnd.X * lineStart.Y - point.X * lineEnd.Y -
+			                           lineStart.X * point.Y));
+			var bottom = MathF.Sqrt(MathF.Pow(lineStart.X - lineEnd.X, 2) +
+			                        MathF.Pow(lineStart.Y - lineEnd.Y, 2));
+			return area / bottom * 2;
+		}
+
+		public static List<List<Vector2>> SimplifyCollinear(this List<List<Vector2>> paths, float epsilon = 0.000001f) =>
+			paths.Select(x => x.SimplifyCollinear(epsilon)).ToList();
+
+		public static List<Vector2> SimplifyCollinear(this List<Vector2> path,
+			float epsilon = 0.000001f
+		) {
 			if(path.Count < 3) return path;
-			
+			path = path.ToList();
+
+			for(var i = 0; i < path.Count - 2; ++i) {
+				var (a, b, c) = (path[i], path[i + 1], path[i + 2]);
+				if(MathF.Abs((b.Y - a.Y) * (c.X - b.X) - (b.X - a.X) * (c.Y - b.Y)) > epsilon)
+					continue;
+				var ab = (a - b).LengthSquared();
+				var ac = (a - c).LengthSquared();
+				if(ab > ac)
+					path.RemoveAt(i + 2);
+				else
+					path.RemoveAt(i + 1);
+				i--;
+			}
+
+			return path;
+		}
+
+		public static List<Vector2> SimplifyPath(this List<Vector2> path, float minAreaRatio) {
+			path = path.SimplifyCollinear();
+			if(path.Count < 3) return path;
+
 			var tris = new List<Triangle2D>();
 			for(var i = 0; i < path.Count - 2; ++i) {
 				var (a, b, c) = (path[i], path[i + 1], path[i + 2]);
 				tris.Add(new Triangle2D(a, b, c));
 			}
 
-			while(tris.Count > 1) {
-				var min = 0;
-				var minArea = tris[0].Area;
-				for(var i = 1; i < tris.Count; ++i)
+			while(tris.Count > 2) {
+				var min = 1;
+				var minArea = tris[1].Area;
+				for(var i = 2; i < tris.Count - 1; ++i)
 					if(tris[i].Area < minArea) {
 						min = i;
 						minArea = tris[i].Area;
 					}
 				var minTri = tris[min];
-				var extent = (minTri.A - minTri.C).Length();
+				var extent = MathF.Max((minTri.A - minTri.C).Length(), MathF.Max((minTri.B - minTri.C).Length(), (minTri.A - minTri.B).Length()));
 				if(minArea > extent * minAreaRatio) break;
+				var ac = (minTri.A - minTri.C).Length();
+				var ab = (minTri.A - minTri.B).Length();
+				var bc = (minTri.B - minTri.C).Length();
+				if(bc > ac)
+					minTri.C = minTri.B;
+				if(ab > ac)
+					minTri.A = minTri.B;
 				if(min > 0) {
 					tris[min - 1].C = tris[min].C;
 					tris[min - 1].UpdateArea();
@@ -133,7 +202,7 @@ namespace Common {
 			foreach(var tri in tris)
 				npoints.Add(tri.B);
 			npoints.Add(tris.Last().C);
-			
+
 			return npoints;
 		}
 
@@ -166,10 +235,10 @@ namespace Common {
 					return points;
 				}).SelectMany(x => x).Append(path.Last()).ToList()).ToList();
 
-		public static List<List<Vector2>> RemoveOverlaps(this List<List<Vector2>> paths) {
+		public static List<List<Vector2>> RemoveOverlaps(this List<List<Vector2>> paths, float? minDist = null) {
 			var quadtree = new QuadTree(paths);
 			quadtree.RemoveOverlaps();
-			return quadtree.GetPaths();
+			return quadtree.GetPaths(minDist);
 		}
 		
 		public static List<List<Vector2>> ScalePaths(this List<List<Vector2>> paths, float scale) =>
@@ -180,19 +249,29 @@ namespace Common {
 				//.AsParallel()
 				.Select(x => SimplifyPath(x, minAreaRatio)).ToList();
 		
+		public static List<List<Vector2>> SimplifyPathsRDP(this List<List<Vector2>> paths, float epsilon) =>
+			paths
+				//.AsParallel()
+				.Select(x => SimplifyRDP(x, epsilon)).ToList();
+		
 		public static List<List<Vector2>> JoinPaths(this List<List<Vector2>> paths, float minDist = 100) {
-			if(paths.Count < 2) return paths;
-			var last = paths[0].Last();
-			var npaths = new List<List<Vector2>> { paths[0] };
-			foreach(var path in paths.Skip(1)) {
-				var dist = (path[0] - last).LengthSquared();
-				if(dist < minDist)
-					npaths.Last().AddRange(path.Skip(1));
-				else
-					npaths.Add(path);
-				last = path.Last();
+			while(paths.Count >= 2) {
+				paths = paths.ReorderPaths();
+				var last = paths[0].Last();
+				var npaths = new List<List<Vector2>> { paths[0] };
+				foreach(var path in paths.Skip(1)) {
+					var dist = (path[0] - last).LengthSquared();
+					if(dist < minDist)
+						npaths.Last().AddRange(path.Skip(1));
+					else
+						npaths.Add(path);
+					last = path.Last();
+				}
+				var cont = npaths.Count < paths.Count;
+				paths = npaths;
+				if(!cont) break;
 			}
-			return npaths;
+			return paths;
 		}
 
 		public static List<List<Vector2>> TriviallyJoinPaths(this List<List<Vector2>> paths) {
@@ -261,7 +340,7 @@ namespace Common {
 		public static float CalcDrawDistance(this List<Vector2> path) =>
 			path.SkipLast(1).Zip(path.Skip(1)).Select(x => (x.Second - x.First).Length()).Sum();
 
-		public static List<List<Vector2>> Fit(this List<List<Vector2>> paths, Vector2 size) {
+		public static List<List<Vector2>> Fit(this List<List<Vector2>> paths, Vector2 size, bool center = false) {
 			var (offset, ub) = GetBounds(paths);
 
 			var osize = ub - offset;
@@ -273,8 +352,47 @@ namespace Common {
 				osize.X * scale < size.X ? (size.X - osize.X * scale) / 2 : 0, 
 				osize.Y * scale < size.Y ? (size.Y - osize.Y * scale) / 2 : 0
 			);
+			if(center)
+				push -= size / 2;
 
 			return paths.Select(path => path.Select(x => (x - offset) * scale + push).ToList()).ToList();
+		}
+
+		public static List<List<Vector2>> ScaleToFit(this List<List<Vector2>> paths, Vector2 size,
+			bool center = false
+		) {
+			// Calculate the bounds of all paths
+			var (minBound, maxBound) = GetBounds(paths);
+			Console.WriteLine($"{maxBound - minBound}");
+
+			// Determine the scale needed to fit the paths within the desired size
+			var widthScale = size.X / (maxBound.X - minBound.X);
+			var heightScale = size.Y / (maxBound.Y - minBound.Y);
+
+			// Use the smaller scale to ensure no stretching occurs
+			var scale = Math.Min(widthScale, heightScale);
+
+			// Calculate the new scaled paths
+			var scaledPaths = paths.Select(path =>
+				path.Select(point => new Vector2(
+					(point.X - minBound.X) * scale,
+					(point.Y - minBound.Y) * scale)).ToList()).ToList();
+
+			// If centering is needed, adjust paths to be in the middle of the defined size
+			if(center) {
+				var scaledWidth = (maxBound.X - minBound.X) * scale;
+				var scaledHeight = (maxBound.Y - minBound.Y) * scale;
+
+				var offsetX = (size.X - scaledWidth) / 2;
+				var offsetY = (size.Y - scaledHeight) / 2;
+
+				scaledPaths = scaledPaths.Select(path =>
+					path.Select(point => new Vector2(
+						point.X + offsetX,
+						point.Y + offsetY)).ToList()).ToList();
+			}
+
+			return scaledPaths;
 		}
 
 		public static List<(string Color, List<Vector2> Points)> OldPathsFromSvg(string fn) {

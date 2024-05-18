@@ -17,6 +17,31 @@
       <None Remove="AhsokaTano_low.stl" />
       <None Remove="test.stl" />
       <None Remove="test.svg" />
+      <None Remove="747.stl" />
+      <None Remove="747-left.svg" />
+      <None Remove="747-min.stl" />
+      <None Remove="747-right-dense.svg" />
+      <None Remove="ahsoka.svg" />
+      <None Remove="aphrodite.svg" />
+      <None Remove="CthulhuTentacleWomanBust.stl" />
+      <None Remove="lotus-up.svg" />
+      <None Remove="Lotus_low_res.stl" />
+      <None Remove="medusa.svg" />
+      <None Remove="medusa-relief.svg" />
+      <None Remove="medusa 2 parts_SubTool1.stl" />
+      <None Remove="milo-torso-final.stl" />
+      <None Remove="mother-and-child.svg" />
+      <None Remove="Mothers_DaySTL.stl" />
+      <None Remove="MothersDayStatueThinBase.stl" />
+      <None Remove="Mothman.stl" />
+      <None Remove="mothman.svg" />
+      <None Remove="redpanda.stl" />
+      <None Remove="Scull_geant_fix02.stl" />
+      <None Remove="sphere_r-24mm.stl" />
+      <None Remove="tentbust.svg" />
+      <None Remove="uploads_files_875208_Aphrodite.stl" />
+      <None Remove="uploads_files_898133_medusa+500k.stl" />
+      <None Remove="uploads_files_3130836_nude.stl" />
     </ItemGroup>
 
 </Project>

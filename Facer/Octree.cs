@@ -8,25 +8,38 @@ namespace Facer;
 public class Octree : AABB {
 	public readonly Octree[] Children;
 	public readonly Triangle3D[] Triangles;
-	
+
 	public Octree(IReadOnlyCollection<Triangle3D> triangles, int maxTrianglesPerLeaf) : this(
 		triangles, maxTrianglesPerLeaf,
 		triangles.Select(x => x.Points).SelectMany(x => x).Aggregate(Vector3.Min),
 		triangles.Select(x => x.Points).SelectMany(x => x).Aggregate(Vector3.Max)
 	) {}
-
-	public Octree(IReadOnlyCollection<Triangle3D> triangles, int maxTrianglesPerLeaf, Vector3 elb, Vector3 eub) : base(elb, eub) {
-		//Console.WriteLine($"{Size}");
+	
+	Octree(IReadOnlyCollection<Triangle3D> triangles, int maxTrianglesPerLeaf, Vector3 elb, Vector3 eub) : base(elb, eub) {
 		if(triangles.Count <= maxTrianglesPerLeaf) {
 			Triangles = triangles.ToArray();
 			Children = null;
 			return;
 		}
 
+		IEnumerable<Triangle3D> SplitAlong(IEnumerable<Triangle3D> tris, Func<Vector3, float> func) {
+			var normal = func(new(-1, 0, 1)) switch {
+				-1 => Vector3.UnitX,
+				0 => Vector3.UnitY,
+				_ => Vector3.UnitZ
+			};
+			var dist = func(Center);
+			return tris.Select(x => x.Split(normal, dist)).SelectMany(x => x);
+		}
+
+		/*triangles = SplitAlong(SplitAlong(SplitAlong(triangles, v => v.X), v => v.Y), v => v.Z)
+			.ToList();*/
+
 		var e = Size / 2;
 		Octree ClipTriangles(Vector3 min) {
 			var max = min + e;
 			var aabb = new AABB(min, max);
+			//var otris = triangles.Where(x => aabb.Contains(x)).ToList();
 			var otris = triangles.Where(x => TriangleIntersectsAABB(x, aabb)).ToList();
 			return otris.Count == 0 ? null : new Octree(otris, maxTrianglesPerLeaf, min, max);
 		}
@@ -58,16 +71,13 @@ public class Octree : AABB {
 		}
 	}
 
-	public IEnumerable<(Vector3 A, Vector3 B, Vector3 Normal)> FindPlaneIntersections(Vector3 cameraPos, Vector3 normal, float distance, HashSet<Triangle3D> used = null) {
+	public IEnumerable<(Vector3 A, Vector3 B, Triangle3D Triangle)> FindPlaneIntersections(Vector3 normal, float distance, HashSet<Triangle3D> used = null) {
 		used ??= [];
 		if(Triangles != null) {
 			foreach(var tri in Triangles) {
-				var toCamera = (cameraPos - tri.Centroid).Normalize();
-				if(Vector3.Dot(tri.Normal, toCamera) < 0)
-					continue;
 				var (intersects, a, b) = TrianglePlaneIntersection(normal, distance, tri);
 				if(intersects && !used.Contains(tri)) {
-					yield return (a, b, tri.Normal);
+					yield return (a, b, tri);
 					used.Add(tri);
 				}
 			}
@@ -79,24 +89,32 @@ public class Octree : AABB {
 
 		foreach(var child in Children)
 			if(child != null)
-				foreach(var ls in child.FindPlaneIntersections(cameraPos, normal, distance, used))
+				foreach(var ls in child.FindPlaneIntersections(normal, distance, used))
 					yield return ls;
 	}
 
-	public bool Intersects(Vector3 origin, Vector3 direction) {
-		if(Triangles != null) {
-			foreach(var tri in Triangles)
-				if(tri.FindIntersection(origin, direction) != null)
-					return true;
-			return false;
-		}
+	public bool Intersects(Vector3 origin, Vector3 direction, Triangle3D except = null) {
+		if(Triangles != null)
+			return Triangles.Any(tri =>
+				tri != except && tri.FindIntersection(origin, direction) != null);
 
 		if(!IntersectedBy(origin, direction)) return false;
-		
+
+		return Children.Any(child => child != null && child.Intersects(origin, direction));
+	}
+
+	public IEnumerable<Triangle3D> Intersects(Triangle3D itri, Triangle3D except = null) {
+		if(Triangles != null)
+			foreach(var tri in Triangles)
+				if(tri != except && tri.Intersects(itri))
+					yield return tri;
+
+		if(!TriangleIntersectsAABB(itri, this)) yield break;
+
 		foreach(var child in Children)
-			if(child != null && child.Intersects(origin, direction))
-				return true;
-		return false;
+			if(child != null)
+				foreach(var elem in child.Intersects(itri, except))
+					yield return elem;
 	}
 
 	// Determine if a segment intersects with the plane and find the intersection point
