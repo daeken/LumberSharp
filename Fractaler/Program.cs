@@ -242,7 +242,7 @@ namespace Fractaler {
 				path.Add(points[i % 5]);
 			}
 			path.AddRange(ArcI(radius, oradius, angles[2], angles[4], around: true));
-			return SvgHelper.Fit(new() { path }, Vector2.One * 2)[0];
+			return path;
 		}
 
 		static float Clamp(float v, float min, float max) => MathF.Min(MathF.Max(v, min), max);
@@ -424,7 +424,7 @@ namespace Fractaler {
 			SvgHelper.Output("test.svg", paths, new());
 		}
 
-		static void Main(string[] args) {
+		static void LittleOneHeartMain(string[] args) {
 			Visualizer.Run(() => {
 				var paths = TextHelper.Render("Little One", "SLF-OPF Cue the Music", 20);
 				Console.WriteLine("Rendered text");
@@ -450,6 +450,201 @@ namespace Fractaler {
 				Visualizer.Clear();
 				Visualizer.DrawPaths(paths);
 				SvgHelper.Output("test.svg", paths, new());
+				Visualizer.WaitForInput();
+			});
+		}
+
+		static void CardFrontMain(string[] args) {
+			Visualizer.Run(() => {
+				var paths = new List<(string Color, List<Vector2> Path)>();
+				paths.Add(("green", new() {
+					new(0, 0), new(10, 0),
+					new(10, 7), new(0, 7),
+					new(0, 0)
+				}));
+				paths.Add(("pink", new() {
+					new(5, 0), new(5, 7)
+				}));
+				var heart = SvgParser.Load("../Animatrix/heart-outline.svg").Select(x => x.Path).ToList();
+				heart = heart.Fit(Vector2.One * 2, center: true);
+				heart = heart.Apply(p => p + new Vector2(5 + 2.5f, 3.5f));
+				paths.AddRange(heart.Select(x => ("black", x)));
+				var ssigil = new List<List<Vector2>> { SeraSigil(4) };
+				ssigil = ssigil.Fit(Vector2.One * 2, center: true);
+				ssigil = ssigil.Apply(p => p + new Vector2(5 + 2.5f, 1.25f));
+				paths.AddRange(ssigil.Select(x => ("black", x)));
+				var zsigil = new List<List<Vector2>> { SzSigil(4) };
+				zsigil = zsigil.Fit(Vector2.One * 2, center: true);
+				zsigil = zsigil.Apply(p => p + new Vector2(5 + 2.5f, 5.75f));
+				paths.AddRange(zsigil.Select(x => ("black", x)));
+				var text = TextHelper.Render("Headbondhood", "SLF-OPF Cue the Music", 12);
+				text = text.Fit(new Vector2(2.5f, 1) * 0.75f, center: true);
+				text = text.Apply(p => p + new Vector2(2.5f, 6.5f));
+				//text = text.Subdivide(10);
+				paths.AddRange(text.Select(x => ("purple", x)));
+				Visualizer.DrawPaths(paths);
+				Visualizer.Clear();
+				Visualizer.DrawPaths(paths);
+				SvgHelper.Output("card_front.svg", paths, new());
+				Visualizer.WaitForInput();
+			});
+		}
+
+		static void ZCardMain(string[] args) {
+			Visualizer.Run(() => {
+				var paths = new List<(string Color, List<Vector2> Path)>();
+				paths.Add(("green", new() {
+					new(0, 0), new(10, 0),
+					new(10, 7), new(0, 7),
+					new(0, 0)
+				}));
+				paths.Add(("pink", new() {
+					new(5, 0), new(5, 7)
+				}));
+
+				var offset = 0.25f;
+				void AddText(string str, float height) {
+					var text = TextHelper.Render(str, "SLF-OPF Cue the Music", height * 50);
+					//text = text.ScaleToFit(new Vector2(4, height));
+					text = text.Apply(p => p / 50);
+					var (lb, ub) = text.GetBounds();
+					text = text.Apply(p => p - lb);
+					text = text.Apply(p => p + new Vector2(5 + 0.5f, offset));
+					text = text.ReorderPaths();
+					paths.AddRange(text.Select(x => ("purple", x)));
+					offset += height + 0.25f / 4;
+				}
+
+				void AddParagraph(string str, float height) {
+					var line = new List<string>();
+					bool IsOverflow(string word) {
+						/*var text = TextHelper.Render(string.Join(" ", line.Append(word)), "SLF-OPF Cue the Music", 20);
+						text = text.ScaleToFit(new Vector2(4, height));
+						var (lb, ub) = text.GetBounds();
+						return ub.X - lb.X > 3.9f;*/
+						return string.Join(" ", line.Append(word)).Length > 51;
+					}
+					foreach(var word in str.Split(' ').Append("**END**")) {
+						if(word == "**END**" || IsOverflow(word)) {
+							Console.WriteLine($"Found overflow: {string.Join(" ", line)}");
+							AddText(string.Join(" ", line), height);
+							line.Clear();
+						}
+						line.Add(word);
+					}
+				}
+				
+				AddParagraph("Happy Birthday!", 0.25f);
+				AddParagraph("And I'm so, so very proud of you.", 0.25f);
+				AddText("", 0.10f);
+				AddParagraph("Love,", 0.25f);
+				Visualizer.DrawPaths(paths);
+				Visualizer.Clear();
+				Visualizer.DrawPaths(paths);
+				SvgHelper.Output("card_back.svg", paths, new());
+				Visualizer.WaitForInput();
+			});
+		}
+
+		static void MothersDayCardMain(string[] args) {
+			Visualizer.Run(() => {
+				var paths = new List<(string Color, List<Vector2> Path)>();
+				paths.Add(("green", new() {
+					new(0, 0), new(10, 0),
+					new(10, 7), new(0, 7),
+					new(0, 0)
+				}));
+				paths.Add(("pink", new() {
+					new(5, 0), new(5, 7)
+				}));
+
+				var offset = 0.25f;
+				void AddText(string str, float height) {
+					var text = TextHelper.Render(str, "SLF-OPF Cue the Music", height * 50);
+					//text = text.ScaleToFit(new Vector2(4, height));
+					text = text.Apply(p => p / 50);
+					var (lb, ub) = text.GetBounds();
+					text = text.Apply(p => p - lb);
+					text = text.Apply(p => p + new Vector2(5 + 0.5f, offset));
+					text = text.ReorderPaths();
+					paths.AddRange(text.Select(x => ("purple", x)));
+					offset += height + 0.25f / 4;
+				}
+
+				void AddParagraph(string str, float height) {
+					var line = new List<string>();
+					bool IsOverflow(string word) {
+						/*var text = TextHelper.Render(string.Join(" ", line.Append(word)), "SLF-OPF Cue the Music", 20);
+						text = text.ScaleToFit(new Vector2(4, height));
+						var (lb, ub) = text.GetBounds();
+						return ub.X - lb.X > 3.9f;*/
+						return string.Join(" ", line.Append(word)).Length > 51;
+					}
+					foreach(var word in str.Split(' ').Append("**END**")) {
+						if(word == "**END**" || IsOverflow(word)) {
+							Console.WriteLine($"Found overflow: {string.Join(" ", line)}");
+							AddText(string.Join(" ", line), height);
+							line.Clear();
+						}
+						line.Add(word);
+					}
+				}
+				
+				Visualizer.DrawPaths(paths);
+				Visualizer.Clear();
+				Visualizer.DrawPaths(paths);
+				SvgHelper.Output("card_back.svg", paths, new());
+				Visualizer.WaitForInput();
+			});
+		}
+		
+        static void Main(string[] args) {
+			Visualizer.Run(() => {
+				var paths = new List<(string Color, List<Vector2> Path)>();
+				paths.Add(("green", new() {
+					new(0, 0), new(10, 0),
+					new(10, 7), new(0, 7),
+					new(0, 0)
+				}));
+				paths.Add(("pink", new() {
+					new(5, 0), new(5, 7)
+				}));
+
+				var offset = 0.25f;
+				void AddText(string str, float height) {
+					var text = TextHelper.Render(str, "SLF-OPF Cue the Music", height * 50);
+					//text = text.ScaleToFit(new Vector2(4, height));
+					text = text.Apply(p => p / 50);
+					var (lb, ub) = text.GetBounds();
+					text = text.Apply(p => p - lb);
+					text = text.Apply(p => p + new Vector2(5 + 0.5f, offset));
+					text = text.ReorderPaths();
+					paths.AddRange(text.Select(x => ("purple", x)));
+					offset += height + 0.25f / 4;
+				}
+
+				void AddParagraph(string str, float height) {
+					var line = new List<string>();
+					bool IsOverflow(string word) {
+						/*var text = TextHelper.Render(string.Join(" ", line.Append(word)), "SLF-OPF Cue the Music", 20);
+						text = text.ScaleToFit(new Vector2(4, height));
+						var (lb, ub) = text.GetBounds();
+						return ub.X - lb.X > 3.9f;*/
+						return string.Join(" ", line.Append(word)).Length > 35;
+					}
+					foreach(var word in str.Split(' ').Append("**END**")) {
+						if(word == "**END**" || IsOverflow(word)) {
+							Console.WriteLine($"Found overflow: {string.Join(" ", line)}");
+							AddText(string.Join(" ", line), height);
+							line.Clear();
+						}
+						line.Add(word);
+					}
+				}
+				
+				Visualizer.DrawPaths(paths);
+				Visualizer.Clear();
+				Visualizer.DrawPaths(paths);
 				Visualizer.WaitForInput();
 			});
 		}

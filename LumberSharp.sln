@@ -32,6 +32,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MarchContour", "MarchContou
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Facer", "Facer\Facer.csproj", "{CC082809-1754-4EC2-B9CA-379E758DE765}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Fielder", "Fielder\Fielder.csproj", "{30977829-8482-4865-B50F-8793EE6B0BF5}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -102,5 +104,9 @@ Global
 		{CC082809-1754-4EC2-B9CA-379E758DE765}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{CC082809-1754-4EC2-B9CA-379E758DE765}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{CC082809-1754-4EC2-B9CA-379E758DE765}.Release|Any CPU.Build.0 = Release|Any CPU
+		{30977829-8482-4865-B50F-8793EE6B0BF5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{30977829-8482-4865-B50F-8793EE6B0BF5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{30977829-8482-4865-B50F-8793EE6B0BF5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{30977829-8482-4865-B50F-8793EE6B0BF5}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

@@ -104,10 +104,12 @@ public class Octree : AABB {
 	}
 
 	public IEnumerable<Triangle3D> Intersects(Triangle3D itri, Triangle3D except = null) {
-		if(Triangles != null)
+		if(Triangles != null) {
 			foreach(var tri in Triangles)
 				if(tri != except && tri.Intersects(itri))
 					yield return tri;
+			yield break;
+		}
 
 		if(!TriangleIntersectsAABB(itri, this)) yield break;
 

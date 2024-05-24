@@ -6,14 +6,16 @@ using DoubleSharp.MathPlus;
 using static Common.Helpers;
 using static System.MathF;
 
-var cameraPos = new Vector3(0, 20, 0);
+var cameraPos = new Vector3(0, -200, -50);
 
-var model = Stl.Load("uploads_files_898133_medusa+500k.stl", recenter: true, swapYZ: true);
-//model = model.Select(x => x.Transform(y => y * 5)).ToList();
+var model = Stl.Load("NewMarvin.stl", recenter: true, rescale: true, swapYZ: true);
+model = model.Select(x => x.Transform(y => y * 100)).ToList();
+model = model.Select(x => x.Transform(y => new(-y.X, -y.Y, y.Z))).ToList();
+//model = model.Select(x => x.Transform(y => new(-y.X, y.Y, y.Z))).ToList();
 Console.WriteLine($"Loaded model ({model.Count} triangles)");
 model = model.AsParallel()
 	.Where(tri => 
-		Vector3.Dot(tri.Normal, (cameraPos - tri.Centroid).Normalize()) >= 0).ToList();
+		Vector3.Dot(tri.Normal, (cameraPos - tri.Centroid).Normalize()) < 0).ToList();
 Console.WriteLine($"Culled backfaces ({model.Count} triangles)");
 var octree = new Octree(model, 50);
 Console.WriteLine("Built octree");
@@ -31,9 +33,8 @@ Vector2 Project(Vector3 point) {
 }
 
 bool CheckHidden(Vector3 p, Triangle3D tri) {
-	var dir = (cameraPos - p).Normalize();
-	var origin = p;
-	return octree.Intersects(origin, dir, except: tri);
+	var dir = (p - cameraPos).Normalize();
+	return octree.Intersects(p, dir, except: tri);
 }
 
 IEnumerable<(Vector3 A, Vector3 B, Triangle3D Tri)> RemoveHiddenSegments((Vector3 A, Vector3 B, Triangle3D Tri) x, int depth = 0) {
@@ -182,50 +183,55 @@ List<List<Vector3>> RemoveOverlaps(List<List<Vector3>> segments, Vector3 normal,
 
 var e = Max(octree.Size.X, Max(octree.Size.Y, octree.Size.Z)) * 0.1f;
 Visualizer.Run(() => {
-	var slices = 500;
-	var allPaths = Enumerable.Range(0, slices).AsParallel().Select(i => {
-		Console.WriteLine($"Doing slice {i}");
-		var rng = new Random();
-		var slicePlane = new Vector3(0.2f, -0.1f, 1).Normalize();
-		//var slicePlane = new Vector3(rng.Next(3) != 0 ? 0.35f : -0.35f, i % 2 == 0 ? -0.1f : 0.1f, 1).Normalize();
-		var bottom = Vector3.Dot(octree.Min, slicePlane.Abs()) - e;
-		var top = Vector3.Dot(octree.Max, slicePlane.Abs()) + e;
-		var sliceDistance = (top - bottom) / (slices - 1);
-		var curDistance = sliceDistance * i + bottom;
-		/*var segments = CombineSegments(octree.FindPlaneIntersections(slicePlane, curDistance)
-				.Select(Subdivide).SelectMany(x => x)
-				.Select(RemoveHiddenSegments).SelectMany(x => x)
-				.ToList()
-			)
-			.Select(x => (x.A, x.B).AsEnumerable().ToList()).ToList();*/
-		var segments = octree.FindPlaneIntersections(slicePlane, curDistance)
-			.Select(RemoveHiddenSegmentsTri).SelectMany(x => x)
-			.Select(x => (x.A, x.B).AsEnumerable().ToList()).ToList();
-		var count = segments.Count;
-		Console.WriteLine($"Sliced! {count} points. Joining paths in 3d");
-		segments = RemoveOverlaps(segments, slicePlane, curDistance);
-		Console.WriteLine($"Reduced {count} to {segments.Count}");
-		if(segments.Count == 0)
-			return Enumerable.Empty<List<Vector2>>();
-		var paths = segments.Select(x => x.Select(Project).ToList()).ToList();
-		paths = paths.Where(x => x.CalcDrawDistance() > 0.001f).ToList();
-		paths = paths.ReorderPaths();
-		paths = paths.TriviallyJoinPaths();
-		paths = paths.ReorderPaths();
-		var beforeDist = paths.CalcDrawDistance();
-		//paths = paths.RemoveOverlaps();
-		paths = paths.SimplifyCollinear();
-		paths = paths.SimplifyPaths(0.0001f);
-		Console.WriteLine($"Total paths for slice: {paths.Count} -- {paths.CalcDrawDistance()} vs {beforeDist}");
-		Visualizer.DrawPaths(paths);
-		return paths;
-	}).SelectMany(x => x).ToList();
-	Console.WriteLine($"All slicing done! {allPaths.Count} paths");
-	/*allPaths = allPaths.RemoveOverlaps();
-	Console.WriteLine($"After dedupe: {allPaths.Count}");*/
-	allPaths = allPaths.Where(x => x.CalcDrawDistance() > 0.001f).ToList();
-	Console.WriteLine($"After removing shorts: {allPaths.Count}");
+	var totalPaths = new List<(string Color, List<Vector2> Path)>();
+	foreach(var color in (string[]) ["green"/*, "red"*/]) {
+		var slices = 250;
+		var allPaths = Enumerable.Range(0, slices).AsParallel().Select(i => {
+			Console.WriteLine($"Doing slice {i}");
+			var rng = new Random();
+			var slicePlane = new Vector3(0, -0.1f, 1).Normalize();
+			//var slicePlane = new Vector3(rng.Next(3) != 0 ? 0.35f : -0.35f, i % 2 == 0 ? -0.1f : 0.1f, 1).Normalize();
+			var bottom = Vector3.Dot(octree.Min, slicePlane.Abs()) - e;
+			var top = Vector3.Dot(octree.Max, slicePlane.Abs()) + e;
+			var sliceDistance = (top - bottom) / (slices - 1);
+			var curDistance = sliceDistance * i + bottom;
+			var segments = CombineSegments(octree.FindPlaneIntersections(slicePlane, curDistance)
+					//.Select(Subdivide).SelectMany(x => x)
+					.Select(RemoveHiddenSegments).SelectMany(x => x)
+					.ToList()
+				)
+				.Select(x => (x.A, x.B).AsEnumerable().ToList()).ToList();
+			/*var segments = octree.FindPlaneIntersections(slicePlane, curDistance)
+				.Select(RemoveHiddenSegmentsTri).SelectMany(x => x)
+				.Select(x => (x.A, x.B).AsEnumerable().ToList()).ToList();*/
+			var count = segments.Count;
+			Console.WriteLine($"Sliced! {count} points. Joining paths in 3d");
+			segments = RemoveOverlaps(segments, slicePlane, curDistance);
+			Console.WriteLine($"Reduced {count} to {segments.Count}");
+			if(segments.Count == 0)
+				return Enumerable.Empty<List<Vector2>>();
+			var paths = segments.Select(x => x.Select(Project).ToList()).ToList();
+			paths = paths.Where(x => x.CalcDrawDistance() > 0.001f).ToList();
+			paths = paths.ReorderPaths();
+			paths = paths.TriviallyJoinPaths();
+			paths = paths.ReorderPaths();
+			var beforeDist = paths.CalcDrawDistance();
+			//paths = paths.RemoveOverlaps();
+			//paths = paths.SimplifyCollinear();
+			//paths = paths.SimplifyPaths(0.0001f);
+			Console.WriteLine(
+				$"Total paths for slice: {paths.Count} -- {paths.CalcDrawDistance()} vs {beforeDist}");
+			Visualizer.DrawPaths(paths);
+			return paths;
+		}).SelectMany(x => x).ToList();
+		Console.WriteLine($"All slicing done! {allPaths.Count} paths");
+		/*allPaths = allPaths.RemoveOverlaps();
+		Console.WriteLine($"After dedupe: {allPaths.Count}");*/
+		allPaths = allPaths.Where(x => x.CalcDrawDistance() > 0.001f).ToList();
+		Console.WriteLine($"After removing shorts: {allPaths.Count}");
+		totalPaths.AddRange(allPaths.Select(v => (color, v)));
+	}
 	//Visualizer.DrawPaths(allPaths);
 	Visualizer.WaitForInput();
-	SvgHelper.Output("test.svg", allPaths, new());
+	SvgHelper.Output("test.svg", totalPaths, new());
 });

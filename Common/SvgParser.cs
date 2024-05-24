@@ -85,14 +85,16 @@ public class SvgParser {
 				if(elem.Attributes!["d"] is {} da)
 					HandlePath(transform, style, da.Value);
 				break;
-			case "symbol":
+			case "symbol": case "g" when elem.Attributes["id"] != null:
 				if(inUse)
 					break;
 				Symbols[elem.Attributes!["id"]!.Value] = elem;
 				style.Pop();
 				return;
 			case "use":
-				Parse(Symbols[elem.Attributes!["xlink:href"]!.Value[1..]], transform, style, inUse: true);
+				var symname = elem.Attributes!["xlink:href"]!.Value[1..];
+				if(Symbols.TryGetValue(symname, out var sym))
+					Parse(sym, transform, style, inUse: true);
 				break;
 		}
 		

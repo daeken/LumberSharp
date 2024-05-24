@@ -43,7 +43,7 @@ public class Triangle3D(Vector3 a, Vector3 b, Vector3 c) {
 		var f = 1 / a;
 		var s = origin - A;
 		var u = f * Vector3.Dot(s, h);
-		if(u < 0 || u > 1) return null;
+		if(u is < 0 or > 1) return null;
 		var q = Vector3.Cross(s, edge1);
 		var v = f * Vector3.Dot(direction, q);
 		if(v < 0 || u + v > 1) return null;

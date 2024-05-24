@@ -20,8 +20,9 @@ public static class TextHelper {
 			cr.MoveTo((600 - te.Width) / 2 - te.XBearing, (400 - te.Height) / 2 - te.YBearing);
 			cr.ShowText(text);
 		}
+		Console.WriteLine(tfn);
 		var paths = SvgParser.Load(tfn, ignoreZ: font.ToLower().Contains("opf")).Select(x => x.Path).ToList();
-		File.Delete(tfn);
+		//File.Delete(tfn);
 		//paths = paths.RemoveOverlaps();
 		return paths;
 	}

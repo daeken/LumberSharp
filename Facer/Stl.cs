@@ -8,12 +8,13 @@ using System.Numerics;
 using System.Text;
 
 public static class Stl {
-	public static IReadOnlyList<Triangle3D> Load(string fn, bool recenter = false, bool swapYZ = false) {
+	public static IReadOnlyList<Triangle3D> Load(string fn, bool recenter = false, bool rescale = false, bool swapYZ = false) {
 		var data = File.ReadAllBytes(fn);
 		var mesh = Encoding.ASCII.GetString(data, 0, 80).Contains("solid") && data.All(x => x != 0)
 			? LoadText(Encoding.ASCII.GetString(data))
 			: LoadBinary(data);
 		mesh = swapYZ ? mesh.Select(x => x.SwapYZ()).ToList() : mesh;
+		mesh = rescale ? Rescale(mesh) : mesh;
 		return recenter ? Recenter(mesh) : mesh;
 	}
 
@@ -39,6 +40,14 @@ public static class Stl {
 		var extents = high - low;
 		var center = extents / 2 + low;
 		return mesh.Select(x => new Triangle3D(x.A - center, x.B - center, x.C - center/*, x.NA, x.NB, x.NC*/)).ToList();
+	}
+
+	static IReadOnlyList<Triangle3D> Rescale(IReadOnlyList<Triangle3D> mesh) {
+		var low = mesh.Select(x => x.Points).SelectMany(x => x).Aggregate(Vector3.Min);
+		var high = mesh.Select(x => x.Points).SelectMany(x => x).Aggregate(Vector3.Max);
+		var extents = high - low;
+		var me = MathF.Max(extents.X, MathF.Max(extents.Y, extents.Z));
+		return mesh.Select(x => new Triangle3D(x.A / me, x.B / me, x.C / me)).ToList();
 	}
 
 	static IReadOnlyList<Triangle3D> LoadBinary(byte[] data) {
