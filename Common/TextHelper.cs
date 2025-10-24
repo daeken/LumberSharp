@@ -4,12 +4,13 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using Cairo;
+using FreeTypeSharp;
 using Path = System.IO.Path;
 
 namespace Common; 
 
 public static class TextHelper {
-	public static List<List<Vector2>> Render(string text, string font, float size) {
+	public static List<List<Vector2>> SkiaRender(string text, string font, float size) {
 		var tfn = Path.GetTempFileName();
 		using(var surface = new SvgSurface(tfn, 600, 400)) {
 			using var cr = new Context(surface);
@@ -25,5 +26,10 @@ public static class TextHelper {
 		//File.Delete(tfn);
 		//paths = paths.RemoveOverlaps();
 		return paths;
+	}
+
+	public static List<List<Vector2>> Render(string text, string font, float size) {
+		var lib = new FreeTypeLibrary();
+		
 	}
 }

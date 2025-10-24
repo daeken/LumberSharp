@@ -9,6 +9,8 @@
       <PackageReference Include="CairoSharp" Version="3.24.24.95" />
       <PackageReference Include="Curiosity.runtime.osx.10.10-arm64.CoreCompat.System.Drawing" Version="6.0.5.4" />
       <PackageReference Include="DoubleSharp" Version="0.0.1" />
+      <PackageReference Include="FreeTypeSharp" Version="3.0.0" />
+      <PackageReference Include="HarfBuzzSharp" Version="8.3.0-preview.3.1" />
       <PackageReference Include="ppy.SDL2-CS" Version="1.0.693-alpha" />
       <PackageReference Include="PrettyPrinter" Version="1.0.0" />
       <PackageReference Include="runtime.osx.10.10-x64.CoreCompat.System.Drawing" Version="6.0.5.128" />
