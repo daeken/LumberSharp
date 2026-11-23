@@ -9,19 +9,12 @@ using static Common.Helpers;
 
 var NearPlane = 1;
 var FarPlane = 1000;
-var Projection = Matrix4x4.CreatePerspectiveFieldOfView(Tau / 4, 1, NearPlane, FarPlane);
-var CameraPos = new Vector3(0, 0, -5).RotateY(Tau / 360 * -30/*45*/);//.RotateZ(Tau / 360 * 36);
+var Projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.Tau / 4, 1, NearPlane, FarPlane);
+var CameraPos = new Vector3(0, 0, -5).RotateY(MathF.Tau / 360 * -30/*45*/);//.RotateZ(MathF.Tau / 360 * 36);
 var View = Matrix4x4.CreateLookAt(CameraPos, new Vector3(0.0001f, 0.0001f, 0.0001f), UnitX);
 var ViewProject = View * Projection;
 
-float Scene(Vector3 p) {
-	return Dodecahedron(p, 1, 0);
-	//return Sdf3D.Sphere(p + Vector3.UnitX * 300 - Vector3.UnitY * 10, 15);
-	return Subtract(
-		Box(p, One),
-		Sphere(p, 1.2f)
-	);
-}
+static float Scene(Vector3 p) => Dodecahedron(p, 1, 0);
 
 Visualizer.Run(() => {
 	Main();
@@ -32,26 +25,23 @@ List<Vector3> FindCuttingPlanes() {
 	var (origin, radius) = FindBoundingSphere(Scene);
 	radius *= 1.5f;
 	var flatAt = new Dictionary<Vector3, List<Vector3>>();
-	var samplePoints = new[] {
-		Vector2.UnitX,
-		-Vector2.UnitX,
-		Vector2.UnitY,
-		-Vector2.UnitY,
-	}.Select(x => x * 0.01f).ToList();
+	var sampleOffsetX = Vector2.UnitX * 0.01f;
+	var sampleOffsetY = Vector2.UnitY * 0.01f;
+	Vector2[] samplePoints = [sampleOffsetX, -sampleOffsetX, sampleOffsetY, -sampleOffsetY];
 	foreach(var p in EvenlySampleSphere(origin, radius, pointsPerAxis: 180)) {
 		var t = March(Scene, p, origin);
 		if(t == 1) continue;
 		var hit = Mix(p, origin, t);
 		var normal = FirstDerivative(Scene, hit);
-		var xAxis = (normal.Abs() - UnitX).LengthSquared() > Epsilon
+		var xAxis = (normal.Abs() - UnitX).LengthSquared() > Sdf3D.Epsilon
 			? UnitX
-			: (normal.Abs() - UnitZ).LengthSquared() > Epsilon
+			: (normal.Abs() - UnitZ).LengthSquared() > Sdf3D.Epsilon
 				? UnitZ
 				: UnitY;
 		xAxis = Normalize(Cross(normal, xAxis));
 		var yAxis = Normalize(Cross(normal, xAxis));
 		var flatness = samplePoints.Select(v => v.X * xAxis + v.Y * yAxis + hit).Select(Scene).Select(Abs).Max();
-		if(flatness > Epsilon)
+		if(flatness > Sdf3D.Epsilon)
 			continue;
 		normal = normal.Apply(v => Round(v, 2)).Normalize();
 		if(!flatAt.TryGetValue(normal, out var bucket) && !flatAt.TryGetValue(-normal, out bucket))
@@ -75,8 +65,7 @@ void Main() {
 
 	var dist = 0.989f; //0.93427896f;
 	
-	var paths = axes.Select(axis => Enumerable.Range(-5, 11).Select(x => x / 5f * dist).Select(d => (axis, d)))
-		.SelectMany(x => x)
+	var paths = axes.SelectMany(axis => Enumerable.Range(-5, 11).Select(step => (axis, d: step / 5f * dist)))
 		.AsParallel().Select(x => {
 			var (scene2d, updimension) = Slice(Scene, x.axis, x.d);
 			var spaths = new SdfQuadtree(scene2d).FindPaths();
@@ -84,7 +73,7 @@ void Main() {
 			//Visualizer.DrawPaths(spaths);
 			var tpaths = spaths.Apply(updimension);
 			tpaths = tpaths.Select(path => Subdivide(path).ToList()).ToList();
-			tpaths = tpaths.Select(RemoveHiddenSegments).SelectMany(y => y).ToList();
+			tpaths = tpaths.SelectMany(RemoveHiddenSegments).ToList();
 			spaths = tpaths.Apply(Project);
 			spaths = spaths.SimplifyPaths(0.001f);
 			Visualizer.DrawPaths(spaths);
@@ -106,7 +95,7 @@ static float March(Func<Vector3, float> f, Vector3 from, Vector3 to, int steps =
 	for(var i = 0; i < steps; ++i) {
 		var p = from + rd * t;
 		var d = f(p);
-		if(Abs(d) <= Epsilon)
+		if(Abs(d) <= Sdf3D.Epsilon)
 			return t / (to - from).Length();
 		t += d * 0.9f;
 	}
@@ -135,7 +124,7 @@ Vector3 FindLastObscured(Vector3 unobscured, Vector3 obscured) {
 
 List<List<Vector3>> RemoveHiddenSegments(List<Vector3> path) {
 	var opath = path.Select(p => (p, IsObscured(p))).ToList();
-	var paths = new List<List<Vector3>> { new() };
+	List<List<Vector3>> paths = [[]];
 	Vector3? lpoint = null;
 	var lastObscured = false;
 	var cpath = paths[0];

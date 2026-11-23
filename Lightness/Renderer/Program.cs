@@ -1,14 +1,14 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
-using MoreLinq;
 using OpenTK.Graphics.OpenGL4;
 using static System.Console;
 
 namespace Lightness.Renderer {
 	public class Program {
 		readonly int Id;
-		readonly Dictionary<string, int> Locations = new Dictionary<string, int>();
+		readonly Dictionary<string, int> UniformLocations = new();
+		readonly Dictionary<string, int> AttributeLocations = new();
 		public static Program Current;
 
 		public Program(string vs, string fs) {
@@ -42,13 +42,13 @@ namespace Lightness.Renderer {
 			Current = this;
 		}
 
-		public int GetUniform(string name) => Locations.ContainsKey(name)
-			? Locations[name]
-			: Locations[name] = GL.GetUniformLocation(Id, name);
+		public int GetUniform(string name) => UniformLocations.TryGetValue(name, out var location)
+			? location
+			: UniformLocations[name] = GL.GetUniformLocation(Id, name);
 		
-		public int GetAttribute(string name) => Locations.ContainsKey(name)
-			? Locations[name]
-			: Locations[name] = GL.GetAttribLocation(Id, name);
+		public int GetAttribute(string name) => AttributeLocations.TryGetValue(name, out var location)
+			? location
+			: AttributeLocations[name] = GL.GetAttribLocation(Id, name);
 
 		public void SetUniform(string name, int val) => GL.Uniform1(GetUniform(name), val);
 		public void SetUniform(string name, float val) => GL.Uniform1(GetUniform(name), val);
@@ -63,9 +63,8 @@ namespace Lightness.Renderer {
 		}
 
 		public void SetTextures(int tu, int[] texs, params string[] names) {
-			names.ForEach((name, i) => {
-				SetTexture(name, tu + i, texs[i]);
-			});
+			for(var i = 0; i < names.Length; ++i)
+				SetTexture(names[i], tu + i, texs[i]);
 		}
 	}
 }

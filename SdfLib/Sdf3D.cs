@@ -28,7 +28,7 @@ public static class Sdf3D {
 	}
 	
 	public static (Vector3 Center, float Radius) FindBoundingSphere(SDF f, int radialTestPoints = 60, float startRadius = 100f) {
-		var rotPerTest = Tau / radialTestPoints;
+		var rotPerTest = MathF.Tau / radialTestPoints;
 		bool TestOutside(Vector3 o, float r, out float minDist, out Vector3 averageDirection) {
 			averageDirection = Zero;
 			minDist = float.PositiveInfinity;
@@ -77,7 +77,7 @@ public static class Sdf3D {
 		Vector3 origin, float radius,
 		int pointsPerAxis = 60
 	) {
-		var rotPerTest = Tau / pointsPerAxis;
+		var rotPerTest = MathF.Tau / pointsPerAxis;
 		var p = new Vector3(radius, 0, 0);
 		var rotY = 0f;
 		for(var i = 0; i < pointsPerAxis; ++i, rotY += rotPerTest) {

@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Numerics;
 using Common;
@@ -9,10 +7,10 @@ using IronPython.Hosting;
 
 namespace ParticlePlot {
 	class Program {
-		static void Main(string[] args) {
+		static int Main(string[] args) {
 			if(args.Length != 2) {
 				Console.Error.WriteLine("Usage: dotnet run <script.py> <output.svg>");
-				Environment.Exit(1);
+				return 1;
 			}
 
 			var engine = Python.CreateEngine();
@@ -34,16 +32,19 @@ namespace ParticlePlot {
 			scope.SetVariable("LoadPng", (Func<string, Image>) Png.Decode);
 			source.Execute(scope);
 			
-			var paths = system.AllParticles.Select(x => x.PositionHistory.Select(y => y.Item2).ToList()).ToList();
+			var paths = system.AllParticles
+				.Select(particle => particle.PositionHistory.Select(sample => sample.Position).ToList())
+				.ToList();
 			if(paths.Count == 0) {
 				Console.Error.WriteLine("No particles created. No SVG generated.");
 				Console.Error.WriteLine("Did you forget to run the particle system?");
-				Environment.Exit(1);
+				return 1;
 			}
 
 			paths = SvgHelper.SimplifyPaths(paths, 5);
 			paths = SvgHelper.ReorderPaths(paths);
 			SvgHelper.Output(args[1], paths.Select(x => ("black", x)).ToList(), page, true);
+			return 0;
 		}
 	}
 }

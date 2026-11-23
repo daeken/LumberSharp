@@ -12,10 +12,10 @@ namespace Lightness {
 	class Program {
 		public static string BaseDirectory;
 	
-		static void Main(string[] args) {
+		static int Main(string[] args) {
 			if(args.Length != 2) {
 				Console.Error.WriteLine("Usage: dotnet run <script.py> <output.svg>");
-				Environment.Exit(1);
+				return 1;
 			}
 
 			BaseDirectory = Path.GetDirectoryName(Path.GetFullPath(args[0]));
@@ -24,24 +24,24 @@ namespace Lightness {
 			
 			var engine = Python.CreateEngine();
 			var scope = engine.CreateScope();
-			engine.CreateScriptSourceFromString(@"
-import clr
-clr.AddReference('Lightness')
-clr.AddReference('MarchingBand')
-clr.AddReference('Common')
-from System.MathF import *
-from Lightness import *
-from Lightness.Renderer import *
-from MarchingBand.ShaderMath import *
-from Common import *
-			").Execute(scope);
+			engine.CreateScriptSourceFromString("""
+				import clr
+				clr.AddReference('Lightness')
+				clr.AddReference('MarchingBand')
+				clr.AddReference('Common')
+				from System.MathF import *
+				from Lightness import *
+				from Lightness.Renderer import *
+				from MarchingBand.ShaderMath import *
+				from Common import *
+				""").Execute(scope);
 			var source = engine.CreateScriptSourceFromFile(args[0]);
-			scope.SetVariable("vec3", (Func<float, float, float, Vector3>) ((a, b, c) => new Vector3(a, b, c)));
+			scope.SetVariable("vec3", static (float x, float y, float z) => new Vector3(x, y, z));
 			source.Execute(scope);
 
 			if(!scope.TryGetVariable<Scene>("scene", out var scene)) {
 				Console.Error.WriteLine("ERROR: No scene defined.");
-				Environment.Exit(1);
+				return 1;
 			}
 
 			if(!scope.TryGetVariable<Page>("page", out var page))
@@ -49,11 +49,11 @@ from Common import *
 
 			if(scene.Camera == null) {
 				Console.Error.WriteLine("ERROR: Camera not assigned to scene.");
-				Environment.Exit(1);
+				return 1;
 			}
 			
 			"Rendering".Debug();
-			var renderer = new Renderer.Renderer(scene, (scene.Width, scene.Height));
+			using var renderer = new Renderer.Renderer(scene, (scene.Width, scene.Height));
 			renderer.Rendered += pixels => {
 				if(scene.Preview || scene.EdgePreview) {
 					if(scene.EdgePreview)
@@ -61,8 +61,7 @@ from Common import *
 					"Outputting image".Debug();
 					var nimage = scene.EdgePreview
 						? new Image(ColorMode.Greyscale, (scene.Width, scene.Height),
-							pixels.Select(x => new[] { x == null || !x.Edge ? (byte) 0 : (byte) 255 })
-								.SelectMany(x => x).ToArray())
+							pixels.Select(x => x is { Edge: true } ? (byte) 255 : (byte) 0).ToArray())
 						: new Image(ColorMode.Rgb, (scene.Width, scene.Height),
 							pixels.Select(x => x == null
 								? new byte[] { 0, 0, 0 }
@@ -70,8 +69,8 @@ from Common import *
 									ToColor(x.Normal.X / 2f + .5f), ToColor(x.Normal.Y / 2f + .5f),
 									ToColor(x.Normal.Z / 2f + .5f)
 								}).SelectMany(x => x).ToArray());
-					using(var fp = File.OpenWrite("preview.png"))
-						Png.Encode(nimage, fp);
+					using var fp = File.Create("preview.png");
+					Png.Encode(nimage, fp);
 				} else {
 					"Vectorizing".Debug();
 					var vectorize = new Vectorize(pixels, scene.Width, scene.Height, false);
@@ -79,6 +78,7 @@ from Common import *
 				}
 			};
 			renderer.Render();
+			return 0;
 		}
 		
 		static byte ToColor(float v) {

@@ -1,6 +1,4 @@
 using System;
-using System.Collections.Generic;
-using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Numerics;
@@ -8,19 +6,18 @@ using System.Numerics;
 namespace MarchingBand {
 	public static class GlslExtensions {
 		public static string ToGlslString(this Type type) {
-			Debug.Assert(type != null && type.FullName != null);
-			if(!type.FullName.StartsWith("System.") && type.IsValueType)
+			if(type == typeof(void)) return "void";
+			if(type == typeof(bool)) return "bool";
+			if(type == typeof(int)) return "int";
+			if(type == typeof(float)) return "float";
+			if(type == typeof(Vec2)) return "vec2";
+			if(type == typeof(Vec3)) return "vec3";
+			if(type == typeof(Vec4)) return "vec4";
+			if(type == typeof(Matrix4x4)) return "mat4";
+			if(type.FullName == "System.Numerics.Matrix3x3") return "mat3";
+			if(type.IsValueType && type.FullName?.StartsWith("System.", StringComparison.Ordinal) == false)
 				return type.Name;
-			return type.FullName switch {
-				"System.Int32" => "int", 
-				"System.Single" => "float",
-				"MarchingBand.Vec2" => "vec2",
-				"MarchingBand.Vec3" => "vec3",
-				"MarchingBand.Vec4" => "vec4",
-				"System.Numerics.Matrix3x3" => "mat3",
-				"System.Numerics.Matrix4x4" => "mat4",
-				_ => throw new NotImplementedException($"Unknown type {type.FullName}")
-			};
+			throw new NotSupportedException($"Unknown shader type {type.FullName}");
 		}
 	}
 	
@@ -68,11 +65,11 @@ namespace MarchingBand {
 			public string[] Modifiers;
 
 			public override string ToString() =>
-				string.Join(' ', (Modifiers ?? new string[0]).Concat(new[] {
+				string.Join(' ', [.. Modifiers ?? [],
 					Value != null
 						? $"{Type.ToGlslString()} {Name} = {Value};"
 						: $"{Type.ToGlslString()} {Name};"
-				}));
+				]);
 		}
 
 		public class ExpressionStatement : GlslAst {
@@ -83,8 +80,9 @@ namespace MarchingBand {
 
 		public class AssignExpression : Expression {
 			public GlslAst Target, Value;
+			public string Operator = "=";
 
-			public override string ToString() => $"{Target} = {Value}";
+			public override string ToString() => $"{Target} {Operator} {Value}";
 		}
 
 		public class MemberAccessExpression : Expression {
@@ -120,18 +118,18 @@ namespace MarchingBand {
 
 			public override string ToString() {
 				var str = Value.ToString(CultureInfo.InvariantCulture);
-				return str.Contains(".") ? str + "f" : str + ".0f";
+				return str.Contains('.') || str.Contains('E') ? str + "f" : str + ".0f";
 			}
 		}
 
 		public class IntExpression : Expression {
 			public int Value;
 
-			public override string ToString() => Value.ToString();
+			public override string ToString() => Value.ToString(CultureInfo.InvariantCulture);
 		}
 
 		public class CallExpression : Expression {
-			public new string Function;
+		public new string Function;
 			public GlslAst[] Arguments;
 
 			public override string ToString() =>

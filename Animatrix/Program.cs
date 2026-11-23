@@ -1,5 +1,4 @@
 ﻿using System;
-using MoreLinq;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
@@ -14,12 +13,12 @@ namespace Animatrix {
 
 			IAnimation animation = new HeartBox();
 			var frames = animation.GenerateFrames();
-			var paths = new List<(string Color, List<Vector2> Points)>();
+			List<(string Color, List<Vector2> Points)> paths = [with(capacity: frames.Sum(frame => frame.Count + 1))];
 			var perRow = (int) MathF.Round(MathF.Sqrt(frames.Count));
 
 			var maxFrameSize = new Vector2(leftPad + slide * frames.Count + 1, 1) * animation.Dimensions;
 			
-			frames.ForEach((f, i) => {
+			foreach(var (i, frame) in frames.Index()) {
 				var suffix = $"###frame{i}";
 				var fx = i % perRow;
 				var fy = i / perRow;
@@ -29,15 +28,15 @@ namespace Animatrix {
 				var frameOff = frameSize - animation.Dimensions;
 				var coff = corner + frameOff;
 				
-				paths.Add(("green" + suffix, new List<Vector2> {
+				paths.Add(("green" + suffix, [
 					corner, 
 					new(corner.X + frameSize.X, corner.Y), 
 					new(corner.X + frameSize.X, corner.Y + frameSize.Y), 
 					new(corner.X, corner.Y + frameSize.Y), 
 					corner
-				}));
-				paths.AddRange(f.Select(x => (x.Item1 + suffix, x.Item2.Select(y => y + coff).ToList())));
-			});
+				]));
+				paths.AddRange(frame.Select(x => (x.Item1 + suffix, x.Item2.Select(y => y + coff).ToList())));
+			}
 			
 			SvgHelper.Output(args[0], paths, new Page());
 		}

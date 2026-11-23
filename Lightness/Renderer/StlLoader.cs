@@ -7,16 +7,11 @@ using System.Text;
 namespace Lightness.Renderer {
 	public static class StlLoader {
 		public static Model Load(string fn, bool recenter = false) {
-			using(var fp = File.OpenRead(Path.Combine(Lightness.Program.BaseDirectory, fn))) {
-				var data = new byte[fp.Length];
-				fp.Read(data, 0, data.Length);
-				var mesh = Encoding.ASCII.GetString(data, 0, 80).Contains("solid")
-					? LoadText(Encoding.ASCII.GetString(data))
-					: LoadBinary(data);
-				if(recenter)
-					mesh = Recenter(mesh);
-				return new Model(mesh);
-			}
+			var data = File.ReadAllBytes(Path.Combine(Lightness.Program.BaseDirectory, fn));
+			var mesh = Encoding.ASCII.GetString(data, 0, System.Math.Min(80, data.Length)).Contains("solid")
+				? LoadText(Encoding.ASCII.GetString(data))
+				: LoadBinary(data);
+			return new Model(recenter ? Recenter(mesh) : mesh);
 		}
 
 		static IReadOnlyList<Triangle> Recenter(IReadOnlyList<Triangle> mesh) {

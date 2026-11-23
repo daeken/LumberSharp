@@ -3,25 +3,21 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Numerics;
-using DoubleSharp.Linq;
 using static Common.Helpers;
 
 namespace Common {
 	public class QuadTree {
-		int MaxSegmentsPerNode;
-		
 		public List<(Vector2 A, Vector2 B)> Segments;
 		public QuadTree[] Children;
 		
-		public QuadTree(List<Vector2> path, int maxSegmentsPerNode) : this(new List<List<Vector2>> { path }, maxSegmentsPerNode) {}
+		public QuadTree(List<Vector2> path, int maxSegmentsPerNode) : this([path], maxSegmentsPerNode) {}
 
 		public QuadTree(List<List<Vector2>> paths, int maxSegmentsPerNode = 50) : this(
 			paths.Select(path => path.SkipLast(1).Zip(path.Skip(1)).Select(OrderSegment)).SelectMany(x => x).ToList(),
 			paths.GetBounds(), maxSegmentsPerNode) {}
 
 		public QuadTree(List<(Vector2 A, Vector2 B)> segments, (Vector2 Lower, Vector2 Upper) bounds, int maxSegmentsPerNode) {
-			MaxSegmentsPerNode = maxSegmentsPerNode;
-			if(segments.Count <= MaxSegmentsPerNode) {
+			if(segments.Count <= maxSegmentsPerNode) {
 				Segments = segments;
 				return;
 			}
@@ -123,27 +119,24 @@ namespace Common {
 
 		public void RemoveOverlaps() {
 			if(Segments == null) {
-				Children.ForEach(x => x.RemoveOverlaps());
+				foreach(var child in Children)
+					child.RemoveOverlaps();
 				return;
 			}
 
-			var nsegments = new List<(Vector2 A, Vector2 B)>();
+			var nsegments = new List<(Vector2 A, Vector2 B)>(Segments.Count);
+		NextSegment:
 			foreach(var segment in Segments) {
-				var didOverlap = false;
 				for(var i = 0; i < nsegments.Count; ++i) {
 					var nseg = nsegments[i];
 					if((nseg.A == segment.A && nseg.B == segment.B) ||
-					   (nseg.A == segment.B && nseg.B == segment.A)) {
-						didOverlap = true;
-						break;
-					}
+					   (nseg.A == segment.B && nseg.B == segment.A))
+						continue NextSegment;
 					if(DetermineOverlap(segment, nseg)) {
 						nsegments[i] = CombineSegments(segment, nseg);
-						didOverlap = true;
-						break;
+						continue NextSegment;
 					}
 				}
-				if(didOverlap) continue;
 				nsegments.Add(segment);
 			}
 			Segments = nsegments;

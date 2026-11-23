@@ -218,14 +218,8 @@ namespace Fractaler {
 		static List<Vector2> SeraSigil(float radius) {
 			var points = PentagonPoints(radius);
 			var angles = PentagonAngles();
-			var path = new List<Vector2>();
-			path.Add(points[3]);
-			path.Add(points[0]);
-			path.Add(points[2]);
-			path.Add(points[4]);
-			path.Add(points[1]);
-			path.AddRange(Arc(radius, angles[1], angles[3], around: true));
-			return path;
+			return [points[3], points[0], points[2], points[4], points[1],
+				.. Arc(radius, angles[1], angles[3], around: true)];
 		}
 
 		static List<Vector2> SzSigil(float radius) {

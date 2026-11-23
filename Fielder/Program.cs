@@ -14,13 +14,14 @@ Vector2 Gradient(Vector2 v) => new Vector2(
 
 Visualizer.Run(() => {
 	var size = new Vector2(1000, 1000);
-	var paths = 5000;
-	var rngs = Enumerable.Range(0, paths).Select(_ => new Random()).ToList();
+	const int pathCount = 5000;
+	const int stepsPerPath = 10000;
+	var rngs = Enumerable.Range(0, pathCount).Select(_ => new Random()).ToList();
 	var allPaths = rngs.AsParallel().Select(rng => {
 		var dir = rng.Next(2) == 0 ? 1 : -1;
 		var p = new Vector2(rng.NextSingle(), rng.NextSingle()) * size;
-		var path = new List<Vector2> { p };
-		for(var i = 0; i < 10000; ++i) {
+		List<Vector2> path = [with(capacity: stepsPerPath + 1), p];
+		for(var i = 0; i < stepsPerPath; ++i) {
 			var g = Gradient(p);
 			p += g * dir;
 			path.Add(p);

@@ -51,7 +51,7 @@ namespace Animatrix {
 					(0, 1, 5, 4)
 				};
 				foreach(var (a, b) in edges)
-					frame.Add(("black", new List<Vector2> { P(corners[a]), P(corners[b]) }));
+					frame.Add(("black", [P(corners[a]), P(corners[b])]));
 				foreach(var (a, b, c, d) in faces) {
 					var pa = P(corners[a]);
 					var pb = P(corners[b]);

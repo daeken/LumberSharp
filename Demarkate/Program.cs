@@ -11,18 +11,15 @@ using SixLabors.ImageSharp.Processing;
 using static Common.Helpers;
 
 namespace Demarkate {
-	class Marker {
-		public Vector2 TopLeft, TopRight, BottomLeft, BottomRight;
-		public ushort Data;
-	}
+	sealed record Marker(Vector2 TopLeft, Vector2 TopRight, Vector2 BottomLeft, Vector2 BottomRight, ushort Data);
 	
 	class Program {
-		static readonly List<(Vector2, Color)> Reticles = new();
-		static readonly List<(Vector2, Vector2, Color)> Lines = new();
-		static readonly long[] CodeMap = { 0, 0b01, 0b10, 0, 0b00, 0, 0, 0b11 };
+		static readonly List<(Vector2, Color)> Reticles = [];
+		static readonly List<(Vector2, Vector2, Color)> Lines = [];
+		static readonly long[] CodeMap = [0, 0b01, 0b10, 0, 0b00, 0, 0, 0b11];
 
 		static void Main(string[] args) {
-			using var im = (Image<Rgba32>) Image.Load(args[0]);
+			using var im = Image.Load<Rgba32>(args[0]);
 
 			Rgba32 GetPixel(Vector2 p) {
 				var a = im[(int) MathF.Floor(p.X), (int) MathF.Floor(p.Y)];
@@ -39,7 +36,7 @@ namespace Demarkate {
 				var nh = (int) MathF.Ceiling(MathF.Max((marker.TopLeft - marker.BottomLeft).Length(), (marker.TopRight - marker.BottomRight).Length())) * 2;
 				var xstep = 1f / (nw - 1);
 				var ystep = 1f / (nh - 1);
-				var nim = new Image<Rgba32>(nw, nh);
+				using var nim = new Image<Rgba32>(nw, nh);
 				for(var y = 0; y < nh; ++y)
 					for(var x = 0; x < nw; ++x) {
 						var po = new Vector2(x * xstep, y * ystep);
@@ -52,10 +49,11 @@ namespace Demarkate {
 				Console.WriteLine($"Done with frame {marker.Data}");
 			}
 
-			var mim = im.Clone();
+			using var mim = im.Clone();
 
 			void Set(int x, int y, Color color) {
-				if(!(x < 0 || x >= mim.Width || y < 0 || y >= mim.Height)) mim[x, y] = color;
+				if(x >= 0 && x < mim.Width && y >= 0 && y < mim.Height)
+					mim[x, y] = color.ToPixel<Rgba32>();
 			}
 
 			foreach(var (a, b, color) in Lines) {
@@ -158,7 +156,7 @@ namespace Demarkate {
 		static IEnumerable<Marker> FindMarkers(Image<Rgba32> im) {
 			var bits = Binarize(im);
 
-			var regions = new List<List<(int X, int Y)>> { new() }.Concat(FindEnclosedRegions(bits)).ToList();
+			List<List<(int X, int Y)>> regions = [[], .. FindEnclosedRegions(bits)];
 			var regionMap = new int[im.Width, im.Height];
 			Parallel.ForEach(regions, (r, _, i) => r.ForEach(p => regionMap[p.X, p.Y] = (int) i));
 
@@ -270,7 +268,7 @@ namespace Demarkate {
 				var value = 0L;
 				for(var y = 0; y < 7; ++y)
 					for(var x = 0; x < 7; ++x)
-						value = (value << 1) | (grid[x, y] ? 1 : 0);
+						value = (value << 1) | (grid[x, y] ? 1L : 0L);
 				var expected = 0b1010101_1110111_0100010_1111111_1001001_0011100_0001000L;
 				Console.WriteLine($"Marker: {Convert.ToString(value, 2)}");
 				if(value != expected) continue;
@@ -317,13 +315,13 @@ namespace Demarkate {
 
 			var dataset = markers.Keys.Select(k => k.Data).Distinct().ToList();
 			foreach(var elem in dataset) {
-				if(!markers.ContainsKey((elem, true)) || !markers.ContainsKey((elem, false))) {
+				if(!markers.TryGetValue((elem, true), out var top) || !markers.TryGetValue((elem, false), out var bottom)) {
 					Console.WriteLine($"Missing one marker for data {elem}");
 					continue;
 				}
 
-				var (ta, tb, tc, td) = markers[(elem, true)];
-				var (ba, bb, bc, bd) = markers[(elem, false)];
+				var (ta, tb, tc, td) = top;
+				var (ba, bb, bc, bd) = bottom;
 
 				Vector2 JustOutside(Vector2 a, Vector2 b, Vector2 c, Vector2 d) {
 					var t1 = (a + b) / 2;
@@ -362,7 +360,7 @@ namespace Demarkate {
 				AddReticle(fc, Color.Cyan);
 				AddReticle(fd, Color.Cyan);
 
-				yield return new Marker { TopLeft = fa, TopRight = fb, BottomLeft = fc, BottomRight = fd, Data = (ushort) elem};
+				yield return new Marker(fa, fb, fc, fd, (ushort) elem);
 			}
 
 			yield break;

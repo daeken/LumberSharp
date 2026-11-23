@@ -1,9 +1,6 @@
 using System;
 using System.Linq;
-using MoreLinq;
-using OpenTK;
 using OpenTK.Graphics.OpenGL4;
-using PrettyPrinter;
 
 namespace Lightness.Renderer {
 	public enum FrameBufferAttachment {
@@ -32,7 +29,9 @@ namespace Lightness.Renderer {
 		public void Resize(int width, int height) {
 			Width = width;
 			Height = height;
-			Textures?.ForEach(GL.DeleteTexture);
+			if(Textures is not null)
+				foreach(var texture in Textures)
+					GL.DeleteTexture(texture);
 
 			Bind();
 			var colors = 0;

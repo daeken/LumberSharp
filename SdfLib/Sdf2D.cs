@@ -11,7 +11,7 @@ public static class Sdf2D {
 	const float Epsilon = 0.001f;
 	
 	public static (Vector2 Center, float Radius) FindBoundingCircle(SDF f, int radialTestPoints = 360, float startRadius = 100f) {
-		var rotPerTest = Tau / radialTestPoints;
+		var rotPerTest = MathF.Tau / radialTestPoints;
 		bool TestOutside(Vector2 o, float r, out float minDist, out Vector2 averageDirection) {
 			averageDirection = Zero;
 			minDist = float.PositiveInfinity;

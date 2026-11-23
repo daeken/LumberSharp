@@ -5,14 +5,12 @@ using static MarchingBand.ShaderMath;
 
 namespace ShaderRunner {
 	struct Pixel {
-		//public Vec3 Normal;
-		//public float Depth;
 		public Vec4 NormalDepth;
 	}
 
 	class Shader : BaseShader<Pixel> {
-		public Vec3 uCameraPosition;
-		public Matrix4x4 uCameraMatrix;
+		public Vec3 uCameraPosition = Vec3.Zero;
+		public Matrix4x4 uCameraMatrix = Matrix4x4.Identity;
 		
 		public override Pixel Evaluate(Vec2 position) {
 			var rayDirection = (uCameraMatrix * vec4(normalize(vec3(position, 2)), 0)).xyz;
@@ -56,15 +54,10 @@ namespace ShaderRunner {
 			return vec3(p.x * c - p.z * s, p.x * s + p.z * c, p.y);
 		}
 
-		float Map(Vec3 pos) {
-			return 0.5f * Torus(OpTwist(pos - vec3(-2, 0.25f, 2)), vec2(0.2f, 0.05f));
-		}
+		float Map(Vec3 pos) => 0.5f * Torus(OpTwist(pos - vec3(-2, 0.25f, 2)), vec2(0.2f, 0.05f));
 	}
 	
 	class Program {
-		static void Main(string[] args) {
-			var shader = new Shader();
-			Console.WriteLine(shader.CompileGlsl());
-		}
+		static void Main() => Console.WriteLine(new Shader().CompileGlsl());
 	}
 }

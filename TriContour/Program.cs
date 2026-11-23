@@ -16,7 +16,7 @@ namespace TriContour {
 
 		const float NearPlane = 1;
 		const float FarPlane = 1000;
-		static Matrix4x4 Projection = Matrix4x4.CreatePerspectiveFieldOfView(Tau / 4, 1, NearPlane, FarPlane);
+		static Matrix4x4 Projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.Tau / 4, 1, NearPlane, FarPlane);
 		static Vector3 CameraPos;
 		static Matrix4x4 View;
 		static Matrix4x4 ViewProject;
@@ -34,7 +34,7 @@ namespace TriContour {
 
 			var center = (Vector2?) null;
 
-			var rot = Tau / 4 / 5;
+			var rot = MathF.Tau / 4 / 5;
 
 			var ap = new List<(string, List<Vector2>)>();
 
@@ -176,37 +176,37 @@ namespace TriContour {
 
 			float Dist(Vector3 a, Vector3 b) => (b - a).Length();
 
-			while(paths.Count > 1) {
-				var comb = false;
+			void Merge(int i, int j, bool reverseA = false, bool reverseB = false) {
+				var a = paths[i];
+				var b = paths[j];
+				paths.RemoveAt(Math.Max(i, j));
+				paths.RemoveAt(Math.Min(i, j));
+				if(reverseA) a.Reverse();
+				if(reverseB) b.Reverse();
+				paths.Add([.. a, .. b]);
+			}
 
-				void Comb(int i, int j, bool swapA, bool swapB) {
-					var a = paths[i];
-					var b = paths[j];
-					paths.RemoveAt(Math.Max(i, j));
-					paths.RemoveAt(Math.Min(i, j));
-					if(swapA) a.Reverse();
-					if(swapB) b.Reverse();
-					paths.Add(a.Concat(b).ToList());
-					comb = true;
-				}
-				
-				for(var i = 0; i < paths.Count && !comb; ++i) {
+			joinPaths: while(paths.Count > 1) {
+				for(var i = 0; i < paths.Count; ++i) {
 					var a = paths[i];
 					var aa = a[0];
 					var ab = a[^1];
-					for(var j = i + 1; j < paths.Count && !comb; ++j) {
+					for(var j = i + 1; j < paths.Count; ++j) {
 						var b = paths[j];
 						var ba = b[0];
 						var bb = b[^1];
 
-						if(Dist(ab, ba) <= maxDist && IsContinuous(ab, ba)) Comb(i, j, false, false);
-						else if(Dist(aa, bb) <= maxDist && IsContinuous(aa, bb)) Comb(j, i, false, false);
-						else if(Dist(ab, bb) <= maxDist && IsContinuous(ab, bb)) Comb(i, j, false, true);
-						else if(Dist(aa, ba) <= maxDist && IsContinuous(aa, ba)) Comb(i, j, true, false);
+						if(Dist(ab, ba) <= maxDist && IsContinuous(ab, ba)) Merge(i, j);
+						else if(Dist(aa, bb) <= maxDist && IsContinuous(aa, bb)) Merge(j, i);
+						else if(Dist(ab, bb) <= maxDist && IsContinuous(ab, bb)) Merge(i, j, reverseB: true);
+						else if(Dist(aa, ba) <= maxDist && IsContinuous(aa, ba)) Merge(i, j, reverseA: true);
+						else continue;
+
+						continue joinPaths;
 					}
 				}
 
-				if(!comb) return paths;
+				break;
 			}
 			return paths;
 		}
@@ -248,14 +248,13 @@ namespace TriContour {
 							firstPoint = p.Apply(v => Round(v, 2));*/
 
 						var rp = p.Apply(v => Round(v, 2));
-						if(points.Contains(rp)) {
+						if(!points.Add(rp)) {
 							if(++overlaps == 3) {
 								Console.WriteLine($"Hit end? {path.Count}");
 								break;
 							}
 						} else
 							overlaps = 0;
-						points.Add(rp);
 						/*if(path.Count > 3 && p.Apply(v => Round(v, 2)) == firstPoint) {
 							Console.WriteLine($"Back to start: {path.Count}");
 							break;
@@ -266,7 +265,7 @@ namespace TriContour {
 							normal = lastNormal.Value;
 						}
 						lastNormal = normal;
-						var ca = normal.Rotate(Tau / 4);
+						var ca = normal.Rotate(MathF.Tau / 4);
 						if(lastPoint == null) {
 							lastPoint = p;
 							p += ca * Resolution;
@@ -305,7 +304,7 @@ namespace TriContour {
 
 			var tpaths = paths.Select(path => path.Select(UpDimension).ToList()).ToList();
 			tpaths = tpaths.Select(path => Subdivide(f3, path).ToList()).ToList();
-			tpaths = tpaths.Select(path => RemoveHiddenSegments(f3, path)).SelectMany(x => x).ToList();
+			tpaths = tpaths.SelectMany(path => RemoveHiddenSegments(f3, path)).ToList();
 			
 			paths = tpaths.Select(path => path.Select(Project).ToList()).ToList();
 

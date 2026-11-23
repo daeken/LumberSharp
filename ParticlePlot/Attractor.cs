@@ -1,15 +1,9 @@
-using System.Collections.Generic;
 using System.Numerics;
 
 namespace ParticlePlot {
-	public class Attractor : Thing {
-		public Vector2 Position;
-		public float Mass;
-		
-		public Attractor(Vector2 position, float mass) {
-			Position = position;
-			Mass = mass;
-		}
+	public class Attractor(Vector2 position, float mass) : Thing {
+		public Vector2 Position = position;
+		public float Mass = mass;
 		
 		public override void Update(ParticleSystem particleSystem) {
 			foreach(var particle in particleSystem.Particles) {

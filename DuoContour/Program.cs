@@ -14,8 +14,7 @@ namespace DuoContour {
 		static void Main(string[] args) {
 			var bounds = FindBounds(Scene);
 			var paths = Enumerable.Range(0, 5).Select(x => x == 0 ? 0 : -MathF.Pow(.1f, (x + 1) / 2f))
-				.Select(d => FindIsoLines(p => Scene(p) + d, bounds))
-				.SelectMany(x => x);
+				.SelectMany(d => FindIsoLines(p => Scene(p) + d, bounds));
 			
 			SvgHelper.Output("test.svg", paths.Select(x => ("black", x)).ToList(), new Page());
 		}
@@ -38,8 +37,7 @@ namespace DuoContour {
 						p = FindClosestSurfacePoint(f, p);
 						path.Add(p);
 						var rp = p.Apply(v => MathF.Round(v, 2));
-						if(points.Contains(rp)) break;
-						points.Add(rp);
+						if(!points.Add(rp)) break;
 						var normal = FirstDerivative(f, p);
 						p += normal.Rotate(MathF.Tau / 4) * (Resolution / 2);
 					}

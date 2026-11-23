@@ -9,8 +9,8 @@ using static System.MathF;
 var cameraPos = new Vector3(0, -200, -50);
 
 var model = Stl.Load("NewMarvin.stl", recenter: true, rescale: true, swapYZ: true);
-model = model.Select(x => x.Transform(y => y * 100)).ToList();
-model = model.Select(x => x.Transform(y => new(-y.X, -y.Y, y.Z))).ToList();
+model = model.Select(triangle => triangle.Transform(static point =>
+	new(-(point.X * 100), -(point.Y * 100), point.Z * 100))).ToList();
 //model = model.Select(x => x.Transform(y => new(-y.X, y.Y, y.Z))).ToList();
 Console.WriteLine($"Loaded model ({model.Count} triangles)");
 model = model.AsParallel()
@@ -71,12 +71,12 @@ IEnumerable<(Vector3 A, Vector3 B, Triangle3D Tri)> RemoveHiddenSegmentsTri(
 	(Vector3 A, Vector3 B, Triangle3D Tri) x
 ) {
 	var (a, b, tri) = x;
-	var segments = new List<(Vector3 A, Vector3 B)> { (a, b) };
+	List<(Vector3 A, Vector3 B)> segments = [(a, b)];
 	var nt = new Triangle3D(a, b, cameraPos);
 	var abl = (b - a).Length();
 	var abn = (b - a).Normalize();
 	foreach(var itri in octree.Intersects(nt, except: tri)) {
-		segments = segments.Select(itri.ClipSegment).SelectMany(v => v).ToList();
+		segments = segments.SelectMany(itri.ClipSegment).ToList();
 		if(segments.Count == 0)
 			break;
 	}
@@ -197,10 +197,10 @@ Visualizer.Run(() => {
 			var curDistance = sliceDistance * i + bottom;
 			var segments = CombineSegments(octree.FindPlaneIntersections(slicePlane, curDistance)
 					//.Select(Subdivide).SelectMany(x => x)
-					.Select(RemoveHiddenSegments).SelectMany(x => x)
+					.SelectMany((segment, index) => RemoveHiddenSegments(segment, depth: index))
 					.ToList()
 				)
-				.Select(x => (x.A, x.B).AsEnumerable().ToList()).ToList();
+				.Select(x => (List<Vector3>)[x.A, x.B]).ToList();
 			/*var segments = octree.FindPlaneIntersections(slicePlane, curDistance)
 				.Select(RemoveHiddenSegmentsTri).SelectMany(x => x)
 				.Select(x => (x.A, x.B).AsEnumerable().ToList()).ToList();*/

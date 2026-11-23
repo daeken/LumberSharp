@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 
 namespace ImageLib {
 	public enum ColorMode {
@@ -53,11 +52,8 @@ namespace ImageLib {
 			if(ColorMode == ColorMode.Greyscale) return;
 
 			var size = PixelSize(ColorMode);
-			for(var i = 0; i < Data.Length; i += size) {
-				var t = Data[i];
-				Data[i] = Data[i + 2];
-				Data[i + 2] = t;
-			}
+			for(var i = 0; i < Data.Length; i += size)
+				(Data[i], Data[i + 2]) = (Data[i + 2], Data[i]);
 		}
 
 		public Image Upscale(int factor, Action<Image, float, float, byte[], int> sampler) {
@@ -94,8 +90,7 @@ namespace ImageLib {
 				y++;
 
 			var pos = y * im.Stride + x * im.PixelBytes;
-			for(var i = 0; i < im.PixelBytes; ++i)
-				odata[offset + i] = im.Data[pos + i];
+			im.Data.AsSpan(pos, im.PixelBytes).CopyTo(odata.AsSpan(offset));
 		}
 
 		static float Mix(float a, float b, float x) => a * (1f - x) + b * x;
@@ -163,7 +158,7 @@ namespace ImageLib {
 					}
 					return new Image(ColorMode.Rgba, Size, odata, Name);
 				case ColorMode.Rgba:
-					var ordata = Data.Select(x => x).ToArray();
+					byte[] ordata = [.. Data];
 					for(var i = 0; i < Size.Width * Size.Height * 4; i += 4) {
 						var r = ordata[i + 0];
 						var g = ordata[i + 1];
@@ -174,13 +169,11 @@ namespace ImageLib {
 				default: throw new NotImplementedException();
 			}
 		}
-		public static int PixelSize(ColorMode mode) {
-			switch(mode) {
-				case ColorMode.Greyscale: return 1;
-				case ColorMode.Rgb: return 3;
-				case ColorMode.Rgba: return 4;
-				default: throw new NotImplementedException();
-			}
-		}
+		public static int PixelSize(ColorMode mode) => mode switch {
+			ColorMode.Greyscale => 1,
+			ColorMode.Rgb => 3,
+			ColorMode.Rgba => 4,
+			_ => throw new NotImplementedException()
+		};
 	}
 }

@@ -5,10 +5,10 @@ using System.Numerics;
 
 namespace ParticlePlot {
 	public class ParticleSystem {
-		public readonly List<Particle> Particles = new List<Particle>();
-		public readonly List<Particle> DeadParticles = new List<Particle>();
-		public readonly List<Thing> Things = new List<Thing>();
-		public readonly Random Random = new Random();
+		public readonly List<Particle> Particles = [];
+		public readonly List<Particle> DeadParticles = [];
+		public readonly List<Thing> Things = [];
+		public readonly Random Random = new();
 
 		public IEnumerable<Particle> AllParticles => ShowDead ? Particles.Concat(DeadParticles) : Particles;
 		

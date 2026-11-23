@@ -1,166 +1,168 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
+using System;
+using System.Buffers.Binary;
 using System.IO;
-using System.Linq;
-using System.Text;
-using Be.IO;
-using Force.Crc32;
-using Ionic.Zlib;
+using System.IO.Compression;
+using System.IO.Hashing;
 
-namespace ImageLib {
-	public static class Png {
-		public static void Encode(Image image, Stream stream) {
-			var bw = new BeBinaryWriter(stream, Encoding.Default, leaveOpen: true);
-			bw.Write(new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A });
+namespace ImageLib;
 
-			void WriteChunk(string type, byte[] data) {
-				Debug.Assert(type.Length == 4);
-				bw.Write(data.Length);
-				var td = Encoding.ASCII.GetBytes(type).Concat(data).ToArray();
-				bw.Write(td);
-				bw.Write(Crc32Algorithm.Compute(td));
+public static class Png {
+	static ReadOnlySpan<byte> Signature => [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
+
+	public static void Encode(Image image, Stream stream) {
+		stream.Write(Signature);
+
+		Span<byte> header = stackalloc byte[13];
+		BinaryPrimitives.WriteInt32BigEndian(header, image.Size.Width);
+		BinaryPrimitives.WriteInt32BigEndian(header[4..], image.Size.Height);
+		header[8] = 8;
+		header[9] = image.ColorMode switch {
+			ColorMode.Greyscale => 0,
+			ColorMode.Rgb => 2,
+			ColorMode.Rgba => 6,
+			_ => throw new NotImplementedException()
+		};
+		header[10..].Clear(); // Compression method, filter method, and interlace method.
+		WriteChunk(stream, "IHDR"u8, header);
+
+		using var compressed = new MemoryStream();
+		var stride = image.Size.Width * Image.PixelSize(image.ColorMode);
+		using(var compressor = new ZLibStream(compressed, CompressionLevel.Fastest, leaveOpen: true)) {
+			for(var y = 0; y < image.Size.Height; ++y) {
+				compressor.WriteByte(0); // No filter.
+				compressor.Write(image.Data.AsSpan(y * stride, stride));
 			}
-
-			void Chunk(string type, Action<BeBinaryWriter> func) {
-				using(var ms = new MemoryStream())
-					using(var sbw = new BeBinaryWriter(ms)) {
-						func(sbw);
-						sbw.Flush();
-						WriteChunk(type, ms.ToArray());
-					}
-			}
-			
-			Chunk("IHDR", w => {
-				w.Write(image.Size.Width);
-				w.Write(image.Size.Height);
-				w.Write((byte) 8);
-				switch(image.ColorMode) {
-					case ColorMode.Greyscale: w.Write((byte) 0); break;
-					case ColorMode.Rgb: w.Write((byte) 2); break;
-					case ColorMode.Rgba: w.Write((byte) 6); break;
-					default: throw new NotImplementedException();
-				}
-				w.Write((byte) 0); // Compression mode
-				w.Write((byte) 0); // Filter
-				w.Write((byte) 0); // Interlace
-			});
-
-			var ps = Image.PixelSize(image.ColorMode);
-			var stride = image.Size.Width * ps;
-			var imem = new byte[image.Size.Height + image.Size.Width * image.Size.Height * ps]; // One byte per scanline for filter (0)
-			for(var y = 0; y < image.Size.Height; ++y)
-				Array.Copy(image.Data, y * stride, imem, y * stride + y + 1, stride);
-			using(var ms = new MemoryStream()) {
-				using(var ds = new ZlibStream(ms, CompressionMode.Compress, CompressionLevel.BestSpeed, leaveOpen: true)) {
-					ds.Write(imem, 0, imem.Length);
-					ds.Flush();
-				}
-				ms.Flush();
-				WriteChunk("IDAT", ms.ToArray());
-			}
-
-			Chunk("IEND", w => { });
-			bw.Flush();
 		}
 
-		public static Image Decode(string fn) =>
-			Decode(fn, File.OpenRead(fn));
+		WriteChunk(stream, "IDAT"u8, compressed.GetBuffer().AsSpan(0, (int) compressed.Length));
+		WriteChunk(stream, "IEND"u8, []);
+		stream.Flush();
+	}
 
-		public static Image Decode(string name, Stream stream) {
-			var br = new BeBinaryReader(stream, Encoding.Default, leaveOpen: true);
+	static void WriteChunk(Stream stream, ReadOnlySpan<byte> type, ReadOnlySpan<byte> data) {
+		Span<byte> number = stackalloc byte[4];
+		BinaryPrimitives.WriteInt32BigEndian(number, data.Length);
+		stream.Write(number);
+		stream.Write(type);
+		stream.Write(data);
 
-			ColorMode colorMode = ColorMode.Greyscale;
-			var size = (Width: 0, Height: 0);
-			byte[] data = null;
+		var crc = new Crc32();
+		crc.Append(type);
+		crc.Append(data);
+		BinaryPrimitives.WriteUInt32BigEndian(number, crc.GetCurrentHashAsUInt32());
+		stream.Write(number);
+	}
 
-			var header = br.ReadBytes(8);
+	public static Image Decode(string fn) {
+		using var stream = File.OpenRead(fn);
+		return Decode(fn, stream);
+	}
 
-			var idats = new List<byte[]>();
+	public static Image Decode(string name, Stream stream) {
+		Span<byte> signature = stackalloc byte[8];
+		stream.ReadExactly(signature);
+		if(!signature.SequenceEqual(Signature))
+			throw new InvalidDataException("Invalid PNG signature.");
 
-			var running = true;
-			while(running) {
-				var dlen = br.ReadInt32();
-				var type = Encoding.ASCII.GetString(br.ReadBytes(4));
-				switch(type) {
-					case "IHDR":
-						size = (br.ReadInt32(), br.ReadInt32());
-						br.ReadByte();
-						switch(br.ReadByte()) {
-							case 0: colorMode = ColorMode.Greyscale; break;
-							case 2: colorMode = ColorMode.Rgb; break;
-							case 6: colorMode = ColorMode.Rgba; break;
-							default: throw new NotImplementedException();
-						}
-						data = new byte[size.Width * size.Height * Image.PixelSize(colorMode)];
-						br.ReadByte();
-						br.ReadByte();
-						br.ReadByte();
-						break;
-					case "IDAT":
-						idats.Add(br.ReadBytes(dlen));
-						break;
-					case "IEND":
-						running = false;
-						break;
-					default:
-						br.ReadBytes(dlen);
-						break;
+		(int Width, int Height) size = default;
+		var colorMode = ColorMode.Greyscale;
+		using var compressed = new MemoryStream();
+		Span<byte> chunkHeader = stackalloc byte[8];
+		Span<byte> header = stackalloc byte[13];
+		Span<byte> buffer = stackalloc byte[4096];
+		Span<byte> crc = stackalloc byte[4];
+
+		while(true) {
+			stream.ReadExactly(chunkHeader);
+			var length = BinaryPrimitives.ReadInt32BigEndian(chunkHeader);
+			var type = chunkHeader[4..];
+			if(length < 0)
+				throw new InvalidDataException("Invalid PNG chunk length.");
+
+			if(type.SequenceEqual("IHDR"u8)) {
+				if(length != header.Length)
+					throw new InvalidDataException("Invalid PNG header length.");
+				stream.ReadExactly(header);
+				size = (BinaryPrimitives.ReadInt32BigEndian(header), BinaryPrimitives.ReadInt32BigEndian(header[4..]));
+				if(size.Width <= 0 || size.Height <= 0)
+					throw new InvalidDataException("Invalid PNG dimensions.");
+				if(header[8] != 8 || header[10] != 0 || header[11] != 0 || header[12] != 0)
+					throw new NotSupportedException("Only non-interlaced 8-bit PNG images are supported.");
+
+				colorMode = header[9] switch {
+					0 => ColorMode.Greyscale,
+					2 => ColorMode.Rgb,
+					6 => ColorMode.Rgba,
+					_ => throw new NotImplementedException()
+				};
+			} else {
+				var isImageData = type.SequenceEqual("IDAT"u8);
+				while(length > 0) {
+					var block = buffer[..Math.Min(length, buffer.Length)];
+					stream.ReadExactly(block);
+					if(isImageData)
+						compressed.Write(block);
+					length -= block.Length;
 				}
-				br.ReadUInt32();
 			}
 
-			var idata = idats.SelectMany(x => x).ToArray();
-			using(var ms = new MemoryStream())
-				using(var zs = new ZlibStream(ms, CompressionMode.Decompress)) {
-					zs.Write(idata, 0, idata.Length);
-					zs.Flush();
-					ms.Flush();
-					var tdata = ms.GetBuffer();
-					var ps = Image.PixelSize(colorMode);
-					var stride = size.Width * ps;
-					for(var y = 0; y < size.Height; ++y) {
-						Array.Copy(tdata, y * stride + y + 1, data, stride * y, stride);
-						switch(tdata[y * stride + y]) {
-							case 0: break;
-							case 1: {
-								for(var x = ps; x < stride; ++x)
-									data[y * stride + x] = unchecked((byte) (data[y * stride + x] + data[y * stride + x - ps]));
-								break;
-							}
-							case 2: {
-								if(y == 0) break;
-								for(var x = 0; x < stride; ++x)
-									data[y * stride + x] = unchecked((byte) (data[y * stride + x] + data[y * stride + x - stride]));
-								break;
-							}
-							case 4: {
-								byte Paeth(byte a, byte b, byte c) {
-									int p = a + b - c, pa = p > a ? p - a : a - p, pb = p > b ? p - b : b - p, pc = p > c ? p - c : c - p;
-									return pa <= pb && pa <= pc ? a : pb <= pc ? b : c;
-								}
-								for(var x = 0; x < stride; ++x) {
-									byte mod = 0;
-									if(x < ps) {
-										if(y > 0)
-											mod = Paeth(0, data[(y - 1) * stride + x], 0);
-									} else {
-										mod = y == 0
-											? Paeth(data[y * stride + x - ps], 0, 0)
-											: Paeth(data[y * stride + x - ps], data[(y - 1) * stride + x], data[(y - 1) * stride + x - ps]);
-									}
-
-									data[y * stride + x] = unchecked((byte) (data[y * stride + x] + mod));
-								}
-								break;
-							}
-							case byte x:
-								throw new NotImplementedException($"Unsupported filter mode {x}");
-						}
-					}
-				}
-			
-			return new Image(colorMode, size, data, name);
+			stream.ReadExactly(crc);
+			if(type.SequenceEqual("IEND"u8)) break;
 		}
+
+		if(size == default)
+			throw new InvalidDataException("Missing PNG header.");
+
+		compressed.Position = 0;
+		using var decompressor = new ZLibStream(compressed, CompressionMode.Decompress);
+		var pixelSize = Image.PixelSize(colorMode);
+		var stride = checked(size.Width * pixelSize);
+		var data = new byte[checked(stride * size.Height)];
+		for(var y = 0; y < size.Height; ++y) {
+			var filter = decompressor.ReadByte();
+			if(filter < 0) throw new EndOfStreamException();
+
+			var row = data.AsSpan(y * stride, stride);
+			decompressor.ReadExactly(row);
+			ReadOnlySpan<byte> previousRow = y == 0 ? [] : data.AsSpan((y - 1) * stride, stride);
+			Unfilter(row, previousRow, pixelSize, filter);
+		}
+
+		return new Image(colorMode, size, data, name);
+	}
+
+	static void Unfilter(Span<byte> row, ReadOnlySpan<byte> previousRow, int pixelSize, int filter) {
+		switch(filter) {
+			case 0:
+				break;
+			case 1:
+				for(var x = pixelSize; x < row.Length; ++x)
+					row[x] = unchecked((byte) (row[x] + row[x - pixelSize]));
+				break;
+			case 2:
+				for(var x = 0; x < previousRow.Length; ++x)
+					row[x] = unchecked((byte) (row[x] + previousRow[x]));
+				break;
+			case 4:
+				for(var x = 0; x < row.Length; ++x) {
+					var left = x < pixelSize ? 0 : row[x - pixelSize];
+					var above = previousRow.IsEmpty ? 0 : previousRow[x];
+					var upperLeft = previousRow.IsEmpty || x < pixelSize ? 0 : previousRow[x - pixelSize];
+					row[x] = unchecked((byte) (row[x] + Paeth(left, above, upperLeft)));
+				}
+				break;
+			default:
+				throw new NotImplementedException($"Unsupported filter mode {filter}");
+		}
+	}
+
+	static int Paeth(int left, int above, int upperLeft) {
+		var prediction = left + above - upperLeft;
+		var leftError = Math.Abs(prediction - left);
+		var aboveError = Math.Abs(prediction - above);
+		var upperLeftError = Math.Abs(prediction - upperLeft);
+		return leftError <= aboveError && leftError <= upperLeftError
+			? left
+			: aboveError <= upperLeftError ? above : upperLeft;
 	}
 }

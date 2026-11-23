@@ -106,7 +106,7 @@ public class Triangle3D(Vector3 a, Vector3 b, Vector3 c) {
 	}
 
 	public IEnumerable<(Vector3 A, Vector3 B)> ClipSegment((Vector3 A, Vector3 B) x) {
-		var points = new List<Vector3> { x.A, x.B };
+		List<Vector3> points = [x.A, x.B];
 		points.Sort((p1, p2) => (p1 - x.A).LengthSquared().CompareTo((p2 - x.B).LengthSquared()));
 		for(var i = 0; i < points.Count - 1; ++i)
 			yield return (points[i], points[i + 1]);

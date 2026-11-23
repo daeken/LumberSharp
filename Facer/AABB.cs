@@ -31,7 +31,7 @@ public class AABB {
 	}
 
 	public bool IntersectedBy(Triangle3D tri) {
-		var triVerts = tri.Points.ToArray();
+		ReadOnlySpan<Vector3> triVerts = [tri.A, tri.B, tri.C];
 		var (triangleMin, triangleMax) = Project(triVerts, new(1, 0, 0));
 		if(triangleMax < Min.X || triangleMin > Max.X) return false;
 		(triangleMin, triangleMax) = Project(triVerts, new(0, 1, 0));
@@ -39,39 +39,40 @@ public class AABB {
 		(triangleMin, triangleMax) = Project(triVerts, new(0, 0, 1));
 		if(triangleMax < Min.Z || triangleMin > Max.Z) return false;
 
-		var boxVerts = new[] {
+		ReadOnlySpan<Vector3> boxVerts = [
 			Min,
-			new Vector3(Max.X, Min.Y, Min.Z),
-			new Vector3(Min.X, Max.Y, Min.Z),
-			new Vector3(Max.X, Max.Y, Min.Z),
+			new(Max.X, Min.Y, Min.Z),
+			new(Min.X, Max.Y, Min.Z),
+			new(Max.X, Max.Y, Min.Z),
 
-			new Vector3(Min.X, Min.Y, Max.Z),
-			new Vector3(Max.X, Min.Y, Max.Z),
-			new Vector3(Min.X, Max.Y, Max.Z),
-			new Vector3(Max.X, Max.Y, Max.Z)
-		};
+			new(Min.X, Min.Y, Max.Z),
+			new(Max.X, Min.Y, Max.Z),
+			new(Min.X, Max.Y, Max.Z),
+			new(Max.X, Max.Y, Max.Z)
+		];
 
 		var triangleOffset = Vector3.Dot(tri.Normal, tri.A);
 		var (boxMin, boxMax) = Project(boxVerts, tri.Normal);
 		if(boxMax < triangleOffset || boxMin > triangleOffset) return false;
 
-		var triangleEdges = new[] {
+		ReadOnlySpan<Vector3> triangleEdges = [
 			tri.A - tri.B,
 			tri.B - tri.C,
 			tri.C - tri.A
-		};
-		for(var i = 0; i < 3; ++i)
-		for(var j = 0; j < 3; ++j) {
-			var axis = Vector3.Cross(triangleEdges[i], BoxNormals[j]);
-			(boxMin, boxMax) = Project(boxVerts, axis);
-			(triangleMin, triangleMax) = Project(triVerts, axis);
-			if(boxMax <= triangleMin || boxMin >= triangleMax) return false;
+		];
+		foreach(var edge in triangleEdges) {
+			foreach(var boxNormal in BoxNormals) {
+				var axis = Vector3.Cross(edge, boxNormal);
+				(boxMin, boxMax) = Project(boxVerts, axis);
+				(triangleMin, triangleMax) = Project(triVerts, axis);
+				if(boxMax <= triangleMin || boxMin >= triangleMax) return false;
+			}
 		}
 
 		return true;
 	}
 
-	(float Min, float Max) Project(IEnumerable<Vector3> points, Vector3 axis) {
+	static (float Min, float Max) Project(ReadOnlySpan<Vector3> points, Vector3 axis) {
 		var min = float.PositiveInfinity;
 		var max = float.NegativeInfinity;
 

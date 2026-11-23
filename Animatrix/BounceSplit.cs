@@ -32,12 +32,7 @@ namespace Animatrix {
 				}
 				radius /= 2;
 				balls *= 2;
-				frames.Add(frame1);
-				frames.Add(frame2);
-				frames.Add(frame3);
-				frames.Add(frame4);
-				frames.Add(frame5);
-				frames.Add(frame6);
+				frames.AddRange([frame1, frame2, frame3, frame4, frame5, frame6]);
 			}
 			return frames;
 		}

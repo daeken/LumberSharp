@@ -65,7 +65,7 @@ public class SdfQuadtree {
 		   (c?.Filled ?? false) && (d?.Filled ?? false))
 			return new((min, max));
 
-		return new((min, max), new[] { a, b, c, d });
+		return new((min, max), [a, b, c, d]);
 	}
 
 	public List<List<Vector2>> FindPaths() {
@@ -93,7 +93,7 @@ public class SdfQuadtree {
 		Func<Vector2, float, Vector2> fromAxis
 	) {
 		var nside = side(node);
-		var segments = new List<(float Min, float Max)> { (axis(nside.Min), axis(nside.Max)) };
+		List<(float Min, float Max)> segments = [(axis(nside.Min), axis(nside.Max))];
 		var touching = FindTouching(nside, except: node).Select(opposite).ToList();
 		foreach(var other in touching) {
 			var (omin, omax) = (axis(other.Min), axis(other.Max));
